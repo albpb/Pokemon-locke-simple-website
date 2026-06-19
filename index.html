@@ -1,14 +1,18 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pokémon Hardlocke Helper</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pokémon Hardlocke Helper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
   <div class="backdrop-ball" aria-hidden="true"></div>
@@ -18,15 +22,25 @@
     <div class="brand-mark"><span class="dot"></span> Hardlocke Helper</div>
     <div class="toolbar">
       <button class="btn btn-primary" id="btn-new">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
         Nuevo
       </button>
       <button class="btn" id="btn-save">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+          <path d="M17 21v-8H7v8M7 3v5h8" />
+        </svg>
         Guardar
       </button>
       <button class="btn" id="btn-load">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <path d="M7 10l5 5 5-5M12 15V3" />
+        </svg>
         Cargar
       </button>
       <input type="file" id="file-input" accept="application/json">
@@ -69,18 +83,21 @@
       </div>
 
     </div>
-<!-- ---------- TEAM PANEL ---------- -->
+    <!-- ---------- TEAM PANEL ---------- -->
     <div class="card team-card">
 
       <div class="team-subpanel">
         <div class="team-search-wrap">
           <div class="search-box">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
             <input type="text" id="pokemon-search" placeholder="Buscar Pokémon…" autocomplete="off">
           </div>
           <div class="search-dropdown" id="search-dropdown">
             <!-- resultados de búsqueda: los rellena tu lógica -->
-            
+
           </div>
           <span class="team-complete-chip" id="team-complete-chip">Completo</span>
         </div>
@@ -91,7 +108,11 @@
       <div class="team-slots" id="team-slots">
         <div class="team-slot" data-slot="0">
           <div class="slot-empty">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M3 12h18M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+            </svg>
             <span>Hueco vacío</span>
           </div>
           <div class="slot-filled-content is-hidden">
@@ -102,9 +123,13 @@
             <span class="slot-name"></span>
           </div>
         </div>
-                <div class="team-slot" data-slot="1">
+        <div class="team-slot" data-slot="1">
           <div class="slot-empty">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M3 12h18M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+            </svg>
             <span>Hueco vacío</span>
           </div>
           <div class="slot-filled-content is-hidden">
@@ -115,9 +140,13 @@
             <span class="slot-name"></span>
           </div>
         </div>
-                <div class="team-slot" data-slot="2">
+        <div class="team-slot" data-slot="2">
           <div class="slot-empty">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M3 12h18M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+            </svg>
             <span>Hueco vacío</span>
           </div>
           <div class="slot-filled-content is-hidden">
@@ -128,9 +157,13 @@
             <span class="slot-name"></span>
           </div>
         </div>
-          <div class="team-slot" data-slot="3">
+        <div class="team-slot" data-slot="3">
           <div class="slot-empty">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M3 12h18M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+            </svg>
             <span>Hueco vacío</span>
           </div>
           <div class="slot-filled-content is-hidden">
@@ -141,9 +174,13 @@
             <span class="slot-name"></span>
           </div>
         </div>
-                <div class="team-slot" data-slot="4">
+        <div class="team-slot" data-slot="4">
           <div class="slot-empty">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M3 12h18M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+            </svg>
             <span>Hueco vacío</span>
           </div>
           <div class="slot-filled-content is-hidden">
@@ -154,9 +191,13 @@
             <span class="slot-name"></span>
           </div>
         </div>
-                <div class="team-slot" data-slot="5">
+        <div class="team-slot" data-slot="5">
           <div class="slot-empty">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M3 12h18M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+            </svg>
             <span>Hueco vacío</span>
           </div>
           <div class="slot-filled-content is-hidden">
@@ -171,7 +212,7 @@
 
     </div>
 
-  <!-- ---------- BADGES PANEL ---------- -->
+    <!-- ---------- BADGES PANEL ---------- -->
     <div class="card badges-card">
 
       <div class="badges-panel">
@@ -187,7 +228,8 @@
         </div>
         <div class="percent-caption">Llevas <b id="badges-percent-text">0</b>%</div>
         <div class="badges-sub">
-          <span class="status-chip badge-status-chip"><span class="dot"></span><span id="badges-count-text">0 / 8 medallas</span></span>
+          <span class="status-chip badge-status-chip"><span class="dot"></span><span id="badges-count-text">0 / 8
+              medallas</span></span>
         </div>
       </div>
 
@@ -204,8 +246,8 @@
 
         <div class="egg-left">
           <button class="egg-btn" id="egg-btn" aria-label="Abrir huevo">
-            <img class="egg-img egg-img-idle" id="egg-img-idle" src="/img/huevo.png" alt="Huevo">
-            <img class="egg-img egg-img-crack" id="egg-img-crack" src="/img/huevo-roto.png" alt="" hidden>
+            <img class="egg-img egg-img-idle" id="egg-img-idle" src="/home/0.png" alt="Huevo">
+            <img class="egg-img egg-img-result" id="egg-img-result" src="" alt="" hidden>
             <span class="egg-glow" id="egg-glow"></span>
             <span class="egg-shine"></span>
           </button>
@@ -220,11 +262,8 @@
           </div>
 
           <div class="egg-result egg-result-filled is-hidden" id="egg-result-filled">
-            <span class="egg-result-label">Has obtenido un:</span>
-            <div class="egg-result-img-wrap">
-              <img class="egg-result-img" id="egg-result-img" src="" alt="">
-            </div>
-            <span class="egg-result-name" id="egg-result-name"></span>
+            <span class="egg-result-name">Has obtenido a <b id="egg-result-name"></b></span>
+            <button class="btn btn-primary mt-5" id="btn-egg-restart">Volver a empezar</button>
           </div>
         </div>
 
@@ -234,7 +273,7 @@
 
   </main>
 
-  
+
 
   <!-- ---------- MODAL: NUEVO ---------- -->
   <div class="modal-overlay" id="modal-overlay">
@@ -285,7 +324,8 @@
 
   <div class="toast" id="toast"><span class="dot"></span><span id="toast-text">Guardado</span></div>
 
-<script src="script.js">
-</script>
+  <script src="script.js">
+  </script>
 </body>
+
 </html>

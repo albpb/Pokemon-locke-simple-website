@@ -24,6 +24,8 @@ let currentGen = 3;
 
 let POKEMON_LIST = [
 ];
+let FIRST_EVO_LIST = [
+];
 let pokemonTeam = [
     { id: 0, nickname: "" },
     { id: 0, nickname: "" },
@@ -404,7 +406,7 @@ teamSlots.forEach(ts => {
 // Peticion api de pokemon
 async function getPokemon() {
     try {
-        const response = await fetch('https://pokeapi.co/api/v2/pokemon?limit=1025');
+        const response = await fetch('https://pokeapi.co/api/v2/pokemon-species?limit=1025');
 
         if (!response.ok) {
             throw new Error(`Error HTTP: ${response.status}`);
@@ -414,13 +416,42 @@ async function getPokemon() {
         POKEMON_LIST = data.results.map((obj, index) => {
             return { name: obj.name, id: index + 1 }
         })
-        console.log(POKEMON_LIST);
     } catch (error) {
         console.error('Error:', error);
     }
 }
 
+// get first evo Pokemon
+async function getPokemonFirstEvo() {
+    try {
+        const response = await fetch('https://pokeapi.co/api/v2/pokemon-species?limit=1025');
+
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        const results = data.results;
+        console.log(results);
+        for (let index = 0; index < results.length; index++) {
+            const response2 = await fetch(results[index].url);
+
+            const dataSpecie = await response2.json();
+
+            if (dataSpecie.evolves_from_species == null) FIRST_EVO_LIST.push(
+                {name: dataSpecie.name, id: dataSpecie.id}
+            )
+            
+        }
+        
+        
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
 getPokemon();
+getPokemonFirstEvo();
 
 
 updateTeamCount();
@@ -531,3 +562,65 @@ function playSkullAnimation(originEl) {
     document.body.appendChild(fx);
     fx.addEventListener('animationend', () => fx.remove());
 }
+
+// ---------- panel de huevo (solo animación visual) ----------
+const eggBtn = document.getElementById('egg-btn');
+const eggImgIdle = document.getElementById('egg-img-idle');
+const eggImgResult = document.getElementById('egg-img-result');
+const eggHint = document.getElementById('egg-hint');
+const eggResultEmpty = document.getElementById('egg-result-empty');
+const eggResultFilled = document.getElementById('egg-result-filled');
+const eggResultName = document.getElementById('egg-result-name');
+
+eggBtn.classList.add('idle');
+let eggBusy = false;
+
+eggBtn.addEventListener('click', () => {
+  if(eggBusy) return;
+  eggBusy = true;
+
+  eggBtn.classList.remove('idle');
+  eggBtn.classList.add('shaking');
+  eggHint.style.opacity = '0';
+
+  setTimeout(() => {
+    eggBtn.classList.remove('shaking');
+    eggBtn.classList.add('hatching');
+
+    const burst = document.createElement('div');
+    burst.className = 'egg-burst';
+    document.body.appendChild(burst);
+    burst.addEventListener('animationend', () => burst.remove());
+
+    const random = FIRST_EVO_LIST[Math.floor(Math.random() * FIRST_EVO_LIST.length)];
+
+    showEggResult(random.name,`home/${random.id}.png`);
+
+  }, 1500);
+});
+
+function showEggResult(name, imageSrc){
+  eggImgResult.src = imageSrc;
+  eggImgResult.alt = name;
+  eggImgResult.hidden = false;
+  eggBtn.classList.add('revealed');
+
+  eggResultName.textContent = name;
+  eggResultEmpty.classList.add('is-hidden');
+  eggResultFilled.classList.remove('is-hidden');
+
+  eggBusy = false; // ya no se puede volver a clicar el huevo hasta reiniciar
+}
+
+document.getElementById('btn-egg-restart').addEventListener('click', () => {
+  eggBtn.classList.remove('hatching', 'revealed');
+  eggBtn.classList.add('idle');
+  eggImgResult.hidden = true;
+  eggImgResult.src = '';
+  eggHint.style.opacity = '1';
+
+  eggResultFilled.classList.add('is-hidden');
+  eggResultEmpty.classList.remove('is-hidden');
+
+  eggBusy = false;
+});
