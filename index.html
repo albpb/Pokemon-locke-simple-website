@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokémon Hardlocke Helper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="backdrop-ball" aria-hidden="true"></div>
+
+  <!-- ---------- TOPBAR ---------- -->
+  <header class="topbar">
+    <div class="brand-mark"><span class="dot"></span> Hardlocke Helper</div>
+    <div class="toolbar">
+      <button class="btn btn-primary" id="btn-new">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Nuevo
+      </button>
+      <button class="btn" id="btn-save">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+        Guardar
+      </button>
+      <button class="btn" id="btn-load">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+        Cargar
+      </button>
+      <input type="file" id="file-input" accept="application/json">
+    </div>
+  </header>
+
+  <!-- ---------- HERO ---------- -->
+  <section class="hero">
+    <div class="eyebrow">Run activa · gen III</div>
+    <h1 class="title">Pokémon<br>Hard<span>locke</span> Helper</h1>
+    <p class="subtitle">Lleva el control de tu partida hardlocke: vidas, capturas y bajas, todo en un único panel.</p>
+  </section>
+
+  <!-- ---------- STATS CARD ---------- -->
+  <main class="wrap">
+    <div class="card">
+
+      <div class="lives-panel">
+        <div class="panel-label">Núm vidas: <b id="lives-total-label">10</b></div>
+        <div class="lives-number-row">
+          <span class="lives-number" id="lives-current">10</span>
+          <span class="lives-of">/ 10 restantes</span>
+        </div>
+        <div class="lives-sub">
+          <span class="status-chip"><span class="dot"></span> Run en curso</span>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="grid-panel">
+        <div class="grid-head">
+          <div class="panel-label">Vidas</div>
+          <div class="legend">
+            <span><i class="i-alive"></i>Activa</span>
+            <span><i class="i-dead"></i>Perdida</span>
+          </div>
+        </div>
+        <div class="ball-grid" id="ball-grid"></div>
+      </div>
+
+    </div>
+<!-- ---------- TEAM PANEL ---------- -->
+    <div class="card team-card">
+
+      <div class="team-subpanel">
+        <div class="team-search-wrap">
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="pokemon-search" placeholder="Buscar Pokémon…" autocomplete="off">
+          </div>
+          <div class="search-dropdown" id="search-dropdown">
+            <!-- resultados de búsqueda: los rellena tu lógica -->
+            
+          </div>
+          <span class="team-complete-chip" id="team-complete-chip">Completo</span>
+        </div>
+
+        <div class="panel-label team-label">Equipo<b id="team-count">0 / 3</b></div>
+      </div>
+
+      <div class="team-slots" id="team-slots">
+        <div class="team-slot" data-slot="0">
+          <div class="slot-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>
+            <span>Hueco vacío</span>
+          </div>
+          <div class="slot-filled-content is-hidden">
+            <div class="slot-img-wrap">
+              <img class="slot-img" src="" alt="">
+            </div>
+            <div class="slot-divider"></div>
+            <span class="slot-name"></span>
+          </div>
+        </div>
+                <div class="team-slot" data-slot="1">
+          <div class="slot-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>
+            <span>Hueco vacío</span>
+          </div>
+          <div class="slot-filled-content is-hidden">
+            <div class="slot-img-wrap">
+              <img class="slot-img" src="" alt="">
+            </div>
+            <div class="slot-divider"></div>
+            <span class="slot-name"></span>
+          </div>
+        </div>
+                <div class="team-slot" data-slot="2">
+          <div class="slot-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>
+            <span>Hueco vacío</span>
+          </div>
+          <div class="slot-filled-content is-hidden">
+            <div class="slot-img-wrap">
+              <img class="slot-img" src="" alt="">
+            </div>
+            <div class="slot-divider"></div>
+            <span class="slot-name"></span>
+          </div>
+        </div>
+          <div class="team-slot" data-slot="3">
+          <div class="slot-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>
+            <span>Hueco vacío</span>
+          </div>
+          <div class="slot-filled-content is-hidden">
+            <div class="slot-img-wrap">
+              <img class="slot-img" src="" alt="">
+            </div>
+            <div class="slot-divider"></div>
+            <span class="slot-name"></span>
+          </div>
+        </div>
+                <div class="team-slot" data-slot="4">
+          <div class="slot-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>
+            <span>Hueco vacío</span>
+          </div>
+          <div class="slot-filled-content is-hidden">
+            <div class="slot-img-wrap">
+              <img class="slot-img" src="" alt="">
+            </div>
+            <div class="slot-divider"></div>
+            <span class="slot-name"></span>
+          </div>
+        </div>
+                <div class="team-slot" data-slot="5">
+          <div class="slot-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>
+            <span>Hueco vacío</span>
+          </div>
+          <div class="slot-filled-content is-hidden">
+            <div class="slot-img-wrap">
+              <img class="slot-img" src="" alt="">
+            </div>
+            <div class="slot-divider"></div>
+            <span class="slot-name"></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  <!-- ---------- BADGES PANEL ---------- -->
+    <div class="card badges-card">
+
+      <div class="badges-panel">
+        <div class="panel-label">Generación<b id="badges-gen-label">III — Hoenn</b></div>
+        <div class="badge-grid" id="badge-grid"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="badges-percent-panel">
+        <div class="percent-number-row">
+          <span class="percent-number" id="badges-percent">0</span><span class="percent-sign">%</span>
+        </div>
+        <div class="percent-caption">Llevas <b id="badges-percent-text">0</b>%</div>
+        <div class="badges-sub">
+          <span class="status-chip badge-status-chip"><span class="dot"></span><span id="badges-count-text">0 / 8 medallas</span></span>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  
+
+  <!-- ---------- MODAL: NUEVO ---------- -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <h2>Nueva run</h2>
+      <div class="field">
+        <label for="input-lives">Número de vidas</label>
+        <input type="number" id="input-lives" min="1" max="50" value="10">
+      </div>
+      <div class="field">
+        <label for="input-gen">Generación</label>
+        <select id="input-gen">
+          <option value="1">Gen I — Kanto</option>
+          <option value="2">Gen II — Johto</option>
+          <option value="3" selected>Gen III — Hoenn</option>
+          <option value="4">Gen IV — Sinnoh</option>
+          <option value="5">Gen V — Teselia</option>
+          <option value="6">Gen VI — Kalos</option>
+          <option value="7">Gen VII — Alola</option>
+          <option value="8">Gen VIII — Galar</option>
+          <option value="9">Gen IX — Paldea</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="btn-cancel">Cancelar</button>
+        <button class="btn btn-primary" id="btn-confirm">Crear partida</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---------- MODAL: MOTE ---------- -->
+  <div class="modal-overlay" id="nickname-overlay">
+    <div class="modal">
+      <h2>Ponle un mote</h2>
+      <div class="nickname-preview" id="nickname-preview">
+        <img id="nickname-preview-img" src="" alt="">
+        <span id="nickname-preview-name"></span>
+      </div>
+      <div class="field">
+        <label for="input-nickname">Mote</label>
+        <input type="text" id="input-nickname" placeholder="Escribe un mote…" autocomplete="off" maxlength="20">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="btn-nickname-confirm">Añadir al equipo</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"><span class="dot"></span><span id="toast-text">Guardado</span></div>
+
+<script src="script.js">
+</script>
+</body>
+</html>
