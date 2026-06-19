@@ -38,15 +38,30 @@ var badges = 0;
 
 
 
-function renderGrid(total) {
+function renderGrid() {
     grid.innerHTML = '';
-    for (let i = 0; i < total; i++) {
+
+    for (let i = 0; i < current_lives; i++) {
         const btn = document.createElement('button');
         btn.className = 'ball-btn';
         btn.type = 'button';
         btn.setAttribute('aria-pressed', 'false');
         btn.setAttribute('aria-label', 'Vida ' + (i + 1));
         btn.innerHTML = pokeballSVG();
+        btn.addEventListener('click', () => toggleBall(btn));
+        grid.appendChild(btn);
+    }
+
+    for (let i = current_lives; i < TOTAL_LIVES; i++) {
+        console.log("holi")
+        const btn = document.createElement('button');
+        btn.className = 'ball-btn';
+        btn.type = 'button';
+        btn.setAttribute('aria-pressed', 'true');
+        btn.setAttribute('aria-label', 'Vida ' + (i + 1));
+        btn.classList.toggle('lost');
+        btn.innerHTML = pokeballSVG();
+
         btn.addEventListener('click', () => toggleBall(btn));
         grid.appendChild(btn);
     }
@@ -58,15 +73,20 @@ function toggleBall(btn) {
     btn.classList.remove('flip');
     requestAnimationFrame(() => btn.classList.add('flip'));
     btn.setAttribute('aria-pressed', btn.classList.contains('lost') ? 'true' : 'false');
+
+    if (!btn.classList.contains('lost'))
+        current_lives++;
+    else {
+        playSkullAnimation(btn);
+        current_lives--;
+    } 
+
     updateCounter();
 }
 
 function updateCounter() {
-    const total = grid.children.length;
-    const lost = grid.querySelectorAll('.ball-btn.lost').length;
-    const remaining = total - lost;
-    currentEl.textContent = remaining;
-    ofEl.textContent = `/ ${total} restantes`;
+    currentEl.textContent = current_lives;
+    ofEl.textContent = `/ ${TOTAL_LIVES} restantes`;
     currentEl.classList.remove('pulse');
     requestAnimationFrame(() => currentEl.classList.add('pulse'));
 }
@@ -93,11 +113,29 @@ document.getElementById('btn-confirm').addEventListener('click', () => {
     const gen = parseInt(document.getElementById('input-gen').value, 10);
 
     TOTAL_LIVES = lives;
+    current_lives = lives;
     totalLabel.textContent = lives;
     currentGen = gen;
     document.getElementById('badges-gen-label').textContent = document.getElementById('input-gen').selectedOptions[0].textContent;
+    document.getElementsByClassName('eyebrow')[0].textContent = "Run activa · "+ document.getElementById('input-gen').selectedOptions[0].textContent; 
+
+    pokemonTeam = [
+    { id: 0, nickname: "" },
+    { id: 0, nickname: "" },
+    { id: 0, nickname: "" },
+    { id: 0, nickname: "" },
+    { id: 0, nickname: "" },
+    { id: 0, nickname: "" }
+    ];
+    for (let index = 0; index < 6; index++) {
+        clearTeamSlot(index);
+        
+    }
+
+    badges = 0;
 
     renderGrid(lives);
+    
     renderBadgeGrid();
 
     closeModal();
@@ -163,29 +201,37 @@ function loadJSON(event) {
             }
 
             TOTAL_LIVES = datos.TOTAL_LIVES;
+            current_lives = datos.current_lives;
             currentGen = datos.currentGen;
 
             pokemonTeam = datos.pokemonTeam;
             badges = datos.badges;
 
             // parseo de datos:
-            
+            const select = document.getElementById('input-gen');
+
+            document.getElementById('badges-gen-label').textContent = select.options[currentGen-1].textContent;
+            document.getElementsByClassName('eyebrow')[0].textContent = "Run activa · "+ select.options[currentGen-1].textContent; 
+  
             renderGrid(TOTAL_LIVES);
+
+
             for (let index = 0; index < 6; index++) {
                 clearTeamSlot(index);
                 console.log(pokemonTeam[index].id, pokemonTeam[index].nickname)
-                if (pokemonTeam[index].id != 0)
-                {
+                if (pokemonTeam[index].id != 0) {
                     setTeamSlot(index, `home/${pokemonTeam[index].id}.png`, pokemonTeam[index].nickname);
-                    
+
                 }
-                
+
             }
+
+            renderBadgeGrid();
 
 
         } catch (error) {
             showToast('Formato de archivo incorrecto');
-            
+
         }
     };
 
@@ -406,7 +452,20 @@ const badgesCountText = document.getElementById('badges-count-text');
 
 function renderBadgeGrid() {
     badgeGrid.innerHTML = '';
-    for (let i = 0; i < TOTAL_BADGES; i++) {
+    
+    for (let i = 0; i < badges; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'badge-btn';
+        btn.type = 'button';
+        btn.setAttribute('aria-pressed', 'false');
+        btn.setAttribute('aria-label', 'Medalla ' + (i + 1));
+        btn.innerHTML = badgeImg(i);
+
+        btn.addEventListener('click', () => toggleBadge(btn));
+        badgeGrid.appendChild(btn);
+    }
+
+    for (let i = badges; i < TOTAL_BADGES; i++) {
         const btn = document.createElement('button');
         btn.className = 'badge-btn';
         btn.type = 'button';
@@ -449,3 +508,26 @@ function updateBadgePercent() {
 
 renderBadgeGrid();
 
+// ---------- animación de calavera al perder una vida ----------
+function skullSVG() {
+    return `
+    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#eef0fb" d="M32 4C18 4 8 14 8 27c0 8 4 13 8 17v8a4 4 0 0 0 4 4h4v-6h4v6h8v-6h4v6h4a4 4 0 0 0 4-4v-8c4-4 8-9 8-17C56 14 46 4 32 4Z"/>
+      <circle cx="22" cy="27" r="6" fill="#ff5d73"/>
+      <circle cx="42" cy="27" r="6" fill="#ff5d73"/>
+      <circle cx="22" cy="27" r="2.6" fill="#14162a"/>
+      <circle cx="42" cy="27" r="2.6" fill="#14162a"/>
+      <path d="M28 38h8l-2 6h-4l-2-6Z" fill="#34386a"/>
+    </svg>`;
+}
+
+function playSkullAnimation(originEl) {
+    const rect = originEl.getBoundingClientRect();
+    const fx = document.createElement('div');
+    fx.className = 'skull-fx';
+    fx.style.left = (rect.left + rect.width / 2) + 'px';
+    fx.style.top = (rect.top + rect.height / 2) + 'px';
+    fx.innerHTML = skullSVG();
+    document.body.appendChild(fx);
+    fx.addEventListener('animationend', () => fx.remove());
+}

@@ -193,6 +193,45 @@
 
     </div>
 
+    <!-- ---------- EGG PANEL ---------- -->
+    <div class="card egg-card">
+
+      <div class="egg-subpanel">
+        <div class="panel-label">Abrir huevo random</div>
+      </div>
+
+      <div class="egg-body">
+
+        <div class="egg-left">
+          <button class="egg-btn" id="egg-btn" aria-label="Abrir huevo">
+            <img class="egg-img egg-img-idle" id="egg-img-idle" src="/img/huevo.png" alt="Huevo">
+            <img class="egg-img egg-img-crack" id="egg-img-crack" src="/img/huevo-roto.png" alt="" hidden>
+            <span class="egg-glow" id="egg-glow"></span>
+            <span class="egg-shine"></span>
+          </button>
+          <span class="egg-hint" id="egg-hint">Toca el huevo</span>
+        </div>
+
+        <div class="egg-divider"></div>
+
+        <div class="egg-right">
+          <div class="egg-result egg-result-empty" id="egg-result-empty">
+            <span>Aún no has abierto nada</span>
+          </div>
+
+          <div class="egg-result egg-result-filled is-hidden" id="egg-result-filled">
+            <span class="egg-result-label">Has obtenido un:</span>
+            <div class="egg-result-img-wrap">
+              <img class="egg-result-img" id="egg-result-img" src="" alt="">
+            </div>
+            <span class="egg-result-name" id="egg-result-name"></span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
   </main>
 
   
