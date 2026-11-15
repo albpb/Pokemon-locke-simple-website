@@ -11,6 +11,49 @@ function pokeballSVG() {
       </svg>`;
 }
 
+// ---------- persistencia en localStorage ----------
+const STORAGE_KEY = 'hardlocke-helper-save';
+let persistEnabled = false; // evita que el render inicial pise la partida guardada
+
+function saveToLocalStorage() {
+    if (!persistEnabled) return;
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            currentGen,
+            TOTAL_LIVES,
+            current_lives,
+            pokemonTeam,
+            badges,
+            savedAt: new Date().toISOString()
+        }));
+    } catch (error) {
+        console.error('No se pudo guardar en localStorage:', error);
+    }
+}
+
+function applyGameState(datos) {
+    TOTAL_LIVES = datos.TOTAL_LIVES;
+    current_lives = datos.current_lives;
+    currentGen = datos.currentGen;
+    pokemonTeam = datos.pokemonTeam;
+    badges = datos.badges;
+
+    const genText = document.getElementById('input-gen').options[currentGen - 1].textContent;
+    document.getElementById('badges-gen-label').textContent = genText;
+    const brandGen = document.getElementById('brand-gen'); // solo si añadiste el chip en la barra
+    if (brandGen) brandGen.textContent = genText;
+    totalLabel.textContent = TOTAL_LIVES;
+
+    renderGrid();
+
+    for (let index = 0; index < 6; index++) {
+        clearTeamSlot(index);
+        loadTeamSlot(index);
+    }
+
+    renderBadgeGrid();
+}
+
 const grid = document.getElementById('ball-grid');
 const currentEl = document.getElementById('lives-current');
 const totalLabel = document.getElementById('lives-total-label');
@@ -81,7 +124,7 @@ function toggleBall(btn) {
     else {
         playSkullAnimation(btn);
         current_lives--;
-    } 
+    }
 
     updateCounter();
 }
@@ -91,6 +134,7 @@ function updateCounter() {
     ofEl.textContent = `/ ${TOTAL_LIVES} restantes`;
     currentEl.classList.remove('pulse');
     requestAnimationFrame(() => currentEl.classList.add('pulse'));
+    saveToLocalStorage();
 }
 
 renderGrid(TOTAL_LIVES);
@@ -119,25 +163,24 @@ document.getElementById('btn-confirm').addEventListener('click', () => {
     totalLabel.textContent = lives;
     currentGen = gen;
     document.getElementById('badges-gen-label').textContent = document.getElementById('input-gen').selectedOptions[0].textContent;
-    document.getElementsByClassName('eyebrow')[0].textContent = "Run activa · "+ document.getElementById('input-gen').selectedOptions[0].textContent; 
 
     pokemonTeam = [
-    { id: 0, nickname: "" },
-    { id: 0, nickname: "" },
-    { id: 0, nickname: "" },
-    { id: 0, nickname: "" },
-    { id: 0, nickname: "" },
-    { id: 0, nickname: "" }
+        { id: 0, nickname: "" },
+        { id: 0, nickname: "" },
+        { id: 0, nickname: "" },
+        { id: 0, nickname: "" },
+        { id: 0, nickname: "" },
+        { id: 0, nickname: "" }
     ];
     for (let index = 0; index < 6; index++) {
         clearTeamSlot(index);
-        
+
     }
 
     badges = 0;
 
     renderGrid(lives);
-    
+
     renderBadgeGrid();
 
     closeModal();
@@ -186,13 +229,26 @@ document.getElementById('file-input').addEventListener('change', () => showToast
 
 document.getElementById('file-input').addEventListener('change', loadJSON);
 
+async function loadTeamSlot(index) {
+    const entry = pokemonTeam[index];
+    if (!entry || entry.id === 0) return;
+
+    if (!entry.image) {
+        setTeamSlotLoading(index);
+        entry.image = await getRandomCardImage(
+            POKEMON_LIST[entry.id - 1] || { id: entry.id },
+            entry.nickname
+        );
+        saveToLocalStorage();
+    }
+    setTeamSlot(index, entry.image, entry.nickname);
+}
+
 function loadJSON(event) {
     const archivo = event.target.files[0];
-
     if (!archivo) return;
 
     const reader = new FileReader();
-
     reader.onload = (e) => {
         try {
             const datos = JSON.parse(e.target.result);
@@ -202,49 +258,29 @@ function loadJSON(event) {
                 return;
             }
 
-            TOTAL_LIVES = datos.TOTAL_LIVES;
-            current_lives = datos.current_lives;
-            currentGen = datos.currentGen;
-
-            pokemonTeam = datos.pokemonTeam;
-            badges = datos.badges;
-
-            // parseo de datos:
-            const select = document.getElementById('input-gen');
-
-            document.getElementById('badges-gen-label').textContent = select.options[currentGen-1].textContent;
-            document.getElementsByClassName('eyebrow')[0].textContent = "Run activa · "+ select.options[currentGen-1].textContent; 
-  
-            renderGrid(TOTAL_LIVES);
-
-
-            for (let index = 0; index < 6; index++) {
-                clearTeamSlot(index);
-                console.log(pokemonTeam[index].id, pokemonTeam[index].nickname)
-                if (pokemonTeam[index].id != 0) {
-                    setTeamSlot(index, `home/${pokemonTeam[index].id}.png`, pokemonTeam[index].nickname);
-
-                }
-
-            }
-
-            renderBadgeGrid();
-
-
+            applyGameState(datos);
+            saveToLocalStorage();
         } catch (error) {
             showToast('Formato de archivo incorrecto');
-
         }
     };
-
     reader.readAsText(archivo);
+    event.target.value = ''; // permite volver a cargar el mismo fichero
 }
 
 // FUTURO: control de archivo JSON
-function validFormat(data) {
+function validFormat(d) {
     return (
-        typeof data === 'object' &&
-        data !== null
+        typeof d === 'object' && d !== null &&
+        Number.isInteger(d.TOTAL_LIVES) && d.TOTAL_LIVES > 0 &&
+        Number.isInteger(d.current_lives) && d.current_lives >= 0 && d.current_lives <= d.TOTAL_LIVES &&
+        Number.isInteger(d.currentGen) && d.currentGen >= 1 && d.currentGen <= 9 &&
+        Number.isInteger(d.badges) && d.badges >= 0 && d.badges <= TOTAL_BADGES &&
+        Array.isArray(d.pokemonTeam) && d.pokemonTeam.length === 6 &&
+        d.pokemonTeam.every(p =>
+            p && Number.isInteger(p.id) && typeof p.nickname === 'string' &&
+            (p.image === undefined || typeof p.image === 'string')
+        )
     );
 }
 
@@ -274,18 +310,28 @@ function closeNicknameModal() {
     pendingPokemon = null;
 }
 
-function confirmNickname() {
+async function confirmNickname() {
     if (!pendingPokemon) return;
 
+    const pokemon = POKEMON_LIST[pendingPokemon - 1];
     const nickname = inputNickname.value.trim();
 
-    const freeIndex = Array.from(teamSlots).findIndex(slot => !slot.classList.contains('filled'));
-    if (freeIndex !== -1) {
-        setTeamSlot(freeIndex, `home/${pendingPokemon}.png`, nickname);
-        pokemonTeam[freeIndex] = { id: pendingPokemon, nickname: nickname };
-    }
+    const freeIndex = Array.from(teamSlots).findIndex(
+        slot => !slot.classList.contains('filled') && !slot.classList.contains('loading')
+    );
 
     closeNicknameModal();
+    if (freeIndex === -1) return;
+
+    pokemonTeam[freeIndex] = { id: pokemon.id, nickname: nickname, image: '' };
+    saveToLocalStorage();
+
+    setTeamSlotLoading(freeIndex);
+    const image = await getRandomCardImage(pokemon, nickname);
+
+    pokemonTeam[freeIndex].image = image;
+    setTeamSlot(freeIndex, image, nickname);
+    saveToLocalStorage();
 }
 
 document.getElementById('btn-nickname-confirm').addEventListener('click', () => confirmNickname());
@@ -313,6 +359,11 @@ document.addEventListener('click', (e) => {
     if (!e.target.closest('.team-search-wrap')) searchDropdown.classList.remove('open');
 });
 
+function setTeamSlotLoading(index) {
+    const slot = teamSlots[index];
+    if (slot) slot.classList.add('loading');
+}
+
 function setTeamSlot(index, imgSrc, name) {
     const slot = teamSlots[index];
     if (!slot) return;
@@ -321,12 +372,16 @@ function setTeamSlot(index, imgSrc, name) {
     const img = slot.querySelector('.slot-img');
     const nameEl = slot.querySelector('.slot-name');
 
+    const isCard = imgSrc.includes('assets.tcgdex.net');
+    filledContent.classList.toggle('is-sprite', !isCard);
+
     img.src = imgSrc;
     img.alt = name || '';
     nameEl.textContent = name || '';
 
     empty.classList.add('is-hidden');
     filledContent.classList.remove('is-hidden');
+    slot.classList.remove('loading');
     slot.classList.add('filled');
     updateTeamCount();
 }
@@ -343,10 +398,9 @@ function clearTeamSlot(index) {
     img.src = '';
     nameEl.textContent = '';
     empty.classList.remove('is-hidden');
-    slot.classList.remove('filled');
+    slot.classList.remove('filled', 'loading');
     updateTeamCount();
 }
-
 function updateTeamCount() {
     const filled = document.querySelectorAll('.team-slot.filled').length;
     const total = teamSlots.length;
@@ -396,13 +450,6 @@ searchDropdown.addEventListener('click', (e) => {
     searchDropdown.classList.remove('open');
 });
 
-teamSlots.forEach(ts => {
-    ts.addEventListener('click', (e) => {
-        const slot = ts.dataset.slot;
-        clearTeamSlot(slot);
-    })
-});
-
 // Peticion api de pokemon
 async function getPokemon() {
     try {
@@ -440,12 +487,12 @@ async function getPokemonFirstEvo() {
             const dataSpecie = await response2.json();
 
             if (dataSpecie.evolves_from_species == null) FIRST_EVO_LIST.push(
-                {name: dataSpecie.name, id: dataSpecie.id}
+                { name: dataSpecie.name, id: dataSpecie.id }
             )
-            
+
         }
-        
-        
+
+
     } catch (error) {
         console.error('Error:', error);
     }
@@ -453,7 +500,98 @@ async function getPokemonFirstEvo() {
 getPokemon();
 getPokemonFirstEvo();
 
+// ---------- aleatorio con semilla ----------
+function xmur3(str) {
+    let h = 1779033703 ^ str.length;
+    for (let i = 0; i < str.length; i++) {
+        h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+        h = (h << 13) | (h >>> 19);
+    }
+    return function () {
+        h = Math.imul(h ^ (h >>> 16), 2246822507);
+        h = Math.imul(h ^ (h >>> 13), 3266489909);
+        return (h ^= h >>> 16) >>> 0;
+    };
+}
 
+function mulberry32(a) {
+    return function () {
+        a |= 0; a = (a + 0x6D2B79F5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+// mismo texto + misma longitud de lista = siempre el mismo índice
+function seededIndex(seed, length) {
+    const rng = mulberry32(xmur3(seed)());
+    return Math.floor(rng() * length);
+}
+// ---------- TCGdex ----------
+const TCGDEX_API = 'https://api.tcgdex.net/v2/en';
+const tcgCache = new Map(); // id del pokémon -> cartas válidas (evita repetir peticiones)
+
+// "Mr. Mime" y "mr-mime" -> "mr mime"; "Flabébé" -> "flabebe"
+function normalizeName(str) {
+    return str
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/-/g, ' ')
+        .replace(/[^a-z0-9 ]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+async function getPokemonCards(pokemon) {
+    if (tcgCache.has(pokemon.id)) return tcgCache.get(pokemon.id);
+
+    const overrides = { 'nidoran-f': 'nidoran', 'nidoran-m': 'nidoran' };
+    const slug = normalizeName(overrides[pokemon.name] || pokemon.name);
+
+    // la API busca por "contiene": pedimos con la palabra más larga y filtramos después
+    const term = slug.split(' ').sort((a, b) => b.length - a.length)[0];
+    const res = await fetch(`${TCGDEX_API}/cards?name=${encodeURIComponent(term)}`);
+    if (!res.ok) throw new Error(`TCGdex HTTP ${res.status}`);
+
+    const cards = await res.json();
+    const matcher = new RegExp(`(^| )${slug}( |$)`); // palabra completa: "mew" no coge "mewtwo"
+    const valid = cards
+        .filter(c => c.image && matcher.test(normalizeName(c.name)))
+        .sort((a, b) => a.id.localeCompare(b.id));
+
+    tcgCache.set(pokemon.id, valid);
+    return valid;
+}
+
+function preloadImage(src) {
+    return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = src;
+    });
+}
+
+// devuelve la URL de una carta aleatoria; si algo falla, usa el sprite de siempre
+async function getRandomCardImage(pokemon, nickname = '') {
+    try {
+        if (pokemon && pokemon.name) {
+            const cards = await getPokemonCards(pokemon);
+            if (cards.length > 0) {
+                const seed = nickname
+                    ? `${pokemon.name}|${nickname.trim().toLowerCase()}`
+                    : pokemon.name;
+                const card = cards[seededIndex(seed, cards.length)];
+                const url = `${card.image}/high.webp`;
+                if (await preloadImage(url)) return url;
+            }
+        }
+    } catch (error) {
+        console.error('TCGdex:', error);
+    }
+    return `home/${pokemon.id}.png`;
+}
 updateTeamCount();
 
 
@@ -483,7 +621,7 @@ const badgesCountText = document.getElementById('badges-count-text');
 
 function renderBadgeGrid() {
     badgeGrid.innerHTML = '';
-    
+
     for (let i = 0; i < badges; i++) {
         const btn = document.createElement('button');
         btn.className = 'badge-btn';
@@ -535,9 +673,42 @@ function updateBadgePercent() {
     badgesCountText.textContent = `${badges} / ${TOTAL_BADGES} medallas`;
     percentEl.classList.remove('pulse');
     requestAnimationFrame(() => percentEl.classList.add('pulse'));
+    saveToLocalStorage();
+
 }
 
 renderBadgeGrid();
+// ---------- restaurar partida al abrir la web ----------
+function loadFromLocalStorage() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return false;
+
+        const datos = JSON.parse(raw);
+        if (!validFormat(datos)) return false;
+
+        applyGameState(datos);
+        return true;
+    } catch (error) {
+        console.error('No se pudo leer localStorage:', error);
+        return false;
+    }
+}
+
+const restored = loadFromLocalStorage();
+persistEnabled = true; // a partir de aquí, cada cambio se guarda
+if (restored) showToast('Partida recuperada');
+
+
+teamSlots.forEach(ts => {
+    ts.addEventListener('click', () => {
+        if (ts.classList.contains('loading')) return;
+        const slot = parseInt(ts.dataset.slot, 10);
+        clearTeamSlot(slot);
+        pokemonTeam[slot] = { id: 0, nickname: "", image: "" };
+        saveToLocalStorage();
+    });
+});
 
 // ---------- animación de calavera al perder una vida ----------
 function skullSVG() {
@@ -576,51 +747,52 @@ eggBtn.classList.add('idle');
 let eggBusy = false;
 
 eggBtn.addEventListener('click', () => {
-  if(eggBusy) return;
-  eggBusy = true;
+    if (eggBusy) return;
+    eggBusy = true;
 
-  eggBtn.classList.remove('idle');
-  eggBtn.classList.add('shaking');
-  eggHint.style.opacity = '0';
+    eggBtn.classList.remove('idle');
+    eggBtn.classList.add('shaking');
+    eggHint.style.opacity = '0';
 
-  setTimeout(() => {
-    eggBtn.classList.remove('shaking');
-    eggBtn.classList.add('hatching');
+    setTimeout(() => {
+        eggBtn.classList.remove('shaking');
+        eggBtn.classList.add('hatching');
 
-    const burst = document.createElement('div');
-    burst.className = 'egg-burst';
-    document.body.appendChild(burst);
-    burst.addEventListener('animationend', () => burst.remove());
+        const burst = document.createElement('div');
+        burst.className = 'egg-burst';
+        document.body.appendChild(burst);
+        burst.addEventListener('animationend', () => burst.remove());
 
-    const random = FIRST_EVO_LIST[Math.floor(Math.random() * FIRST_EVO_LIST.length)];
+        const random = FIRST_EVO_LIST[Math.floor(Math.random() * FIRST_EVO_LIST.length)];
 
-    showEggResult(random.name,`home/${random.id}.png`);
+        showEggResult(random.name, `home/${random.id}.png`);
 
-  }, 1500);
+    }, 1500);
 });
 
-function showEggResult(name, imageSrc){
-  eggImgResult.src = imageSrc;
-  eggImgResult.alt = name;
-  eggImgResult.hidden = false;
-  eggBtn.classList.add('revealed');
+function showEggResult(name, imageSrc) {
+    eggImgResult.src = imageSrc;
+    eggImgResult.alt = name;
+    eggImgResult.hidden = false;
+    eggBtn.classList.add('revealed');
 
-  eggResultName.textContent = name;
-  eggResultEmpty.classList.add('is-hidden');
-  eggResultFilled.classList.remove('is-hidden');
+    eggResultName.textContent = name;
+    eggResultEmpty.classList.add('is-hidden');
+    eggResultFilled.classList.remove('is-hidden');
 
-  eggBusy = false; // ya no se puede volver a clicar el huevo hasta reiniciar
+    eggBusy = false; // ya no se puede volver a clicar el huevo hasta reiniciar
 }
 
 document.getElementById('btn-egg-restart').addEventListener('click', () => {
-  eggBtn.classList.remove('hatching', 'revealed');
-  eggBtn.classList.add('idle');
-  eggImgResult.hidden = true;
-  eggImgResult.src = '';
-  eggHint.style.opacity = '1';
+    eggBtn.classList.remove('hatching', 'revealed');
+    eggBtn.classList.add('idle');
+    eggImgResult.hidden = true;
+    eggImgResult.src = '';
+    eggHint.style.opacity = '1';
 
-  eggResultFilled.classList.add('is-hidden');
-  eggResultEmpty.classList.remove('is-hidden');
+    eggResultFilled.classList.add('is-hidden');
+    eggResultEmpty.classList.remove('is-hidden');
 
-  eggBusy = false;
+    eggBusy = false;
 });
+
