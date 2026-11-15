@@ -1305,3 +1305,51 @@
   padding: 14px;
   transform: none;
 }
+
+/* ---------- responsive: una sola columna al ampliar / pantallas estrechas ---------- */
+
+/* tablet y ventanas estrechas: vidas arriba, equipo debajo */
+@media (max-width: 980px){
+  .top-row{
+    grid-template-columns: 1fr;
+    margin-top: 24px;
+  }
+
+  /* sin columna lateral, ya no tiene sentido que las vidas se queden fijas */
+  .lives-card{
+    position: static;
+    align-self: stretch;
+    /* con el ancho completo, vidas y pokébolas vuelven a ir lado a lado */
+    grid-template-columns: minmax(180px, .85fr) 1px 1.15fr;
+    grid-template-rows: auto;
+  }
+  .lives-card .divider{ width: 1px; height: auto; }
+  .lives-card .lives-panel,
+  .lives-card .grid-panel{ padding: 28px 24px; }
+  .lives-card .grid-panel{ justify-content: center; }
+
+  .top-row .team-slots{ max-width: 720px; }
+}
+
+/* móvil: las vidas vuelven a apilarse */
+@media (max-width: 640px){
+  .lives-card{
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1px auto;
+  }
+  .lives-card .divider{ width: 100%; height: 1px; }
+  .lives-card .lives-panel{ padding: 26px 22px 20px; }
+  .lives-card .grid-panel{ padding: 20px 22px 26px; }
+
+  .top-row .team-card{ padding: 20px 18px; }
+  .team-subpanel{ gap: 14px; }
+}
+
+/* móvil pequeño: equipo en una sola columna y sin zoom reducido */
+@media (max-width: 480px){
+  .wrap{ zoom: 1; }
+  .top-row .team-slots{
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+}
