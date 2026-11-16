@@ -24,6 +24,7 @@ function saveToLocalStorage() {
             current_lives,
             pokemonTeam,
             badges,
+            godHistory,
             savedAt: new Date().toISOString()
         }));
     } catch (error) {
@@ -37,10 +38,11 @@ function applyGameState(datos) {
     currentGen = datos.currentGen;
     pokemonTeam = datos.pokemonTeam;
     badges = datos.badges;
+    godHistory = Array.isArray(datos.godHistory) ? datos.godHistory : [];
 
     const genText = document.getElementById('input-gen').options[currentGen - 1].textContent;
     document.getElementById('badges-gen-label').textContent = genText;
-    const brandGen = document.getElementById('brand-gen'); // solo si añadiste el chip en la barra
+    const brandGen = document.getElementById('brand-gen');
     if (brandGen) brandGen.textContent = genText;
     totalLabel.textContent = TOTAL_LIVES;
 
@@ -52,6 +54,11 @@ function applyGameState(datos) {
     }
 
     renderBadgeGrid();
+
+    // partidas anteriores a esta función: si ya había un dios en el equipo, lo registra
+    const currentGod = pokemonTeam.find(p => p && p.isGod);
+    if (currentGod) registerGod(currentGod);
+    renderRegistry();
 }
 
 const grid = document.getElementById('ball-grid');
@@ -77,12 +84,13 @@ let pokemonTeam = [
     { id: 0, nickname: "" },
     { id: 0, nickname: "" }
 ];
+let godHistory = []; // [{ id, nickname, species, image, ascendedAt }]
 
 const TOTAL_BADGES = 8;
 var badges = 0;
 
 // ---------- tabla de tipos ----------
-const TYPE_ICON_PATH = 'types/';   
+const TYPE_ICON_PATH = 'types/';
 
 const POKEMON_TYPES = [
     { key: 'normal', label: 'Normal', color: '#A8A77A' },
@@ -302,6 +310,7 @@ function renderGrid() {
         grid.appendChild(btn);
     }
     updateCounter();
+
 }
 
 function toggleBall(btn) {
@@ -370,6 +379,9 @@ document.getElementById('btn-confirm').addEventListener('click', () => {
 
     badges = 0;
 
+    godHistory = [];
+    renderRegistry();
+
     renderGrid(lives);
 
     renderBadgeGrid();
@@ -395,6 +407,7 @@ document.getElementById('btn-save').addEventListener('click', () => {
         current_lives,
         pokemonTeam,
         badges,
+        godHistory,
         fechaCreacion: new Date().toISOString()
     };
 
@@ -475,11 +488,17 @@ function validFormat(d) {
         Number.isInteger(d.currentGen) && d.currentGen >= 1 && d.currentGen <= 9 &&
         Number.isInteger(d.badges) && d.badges >= 0 && d.badges <= TOTAL_BADGES &&
         Array.isArray(d.pokemonTeam) && d.pokemonTeam.length === 6 &&
+
+        (d.godHistory === undefined || (Array.isArray(d.godHistory) && d.godHistory.every(g =>
+            g && Number.isInteger(g.id) && typeof g.nickname === 'string'
+        ))) &&
         d.pokemonTeam.every(p =>
             p && Number.isInteger(p.id) && typeof p.nickname === 'string' &&
             (p.image === undefined || typeof p.image === 'string') &&
-            (p.types === undefined || Array.isArray(p.types))
+            (p.types === undefined || Array.isArray(p.types)) &&
+            (p.isGod === undefined || typeof p.isGod === 'boolean')
         )
+
     );
 }
 
@@ -605,14 +624,15 @@ function clearTeamSlot(index) {
     slot.classList.remove('filled', 'loading');
     updateTeamCount();
 }
+
 function updateTeamCount() {
     const filled = document.querySelectorAll('.team-slot.filled').length;
     const total = teamSlots.length;
     teamCountEl.textContent = `${filled} / ${total}`;
     teamCompleteChip.classList.toggle('show', filled === total);
+    applyGodState();
     updateTypePanel();
 }
-
 
 function renderPokemonDropdown(list) {
     if (!list || list.length === 0) {
@@ -654,6 +674,181 @@ searchDropdown.addEventListener('click', (e) => {
     searchInput.value = '';
     searchDropdown.classList.remove('open');
 });
+
+// ---------- Dios de Locke ----------
+const CROWN_SVG = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 11H5L3 7Zm2 13h14v2H5v-2Z"/></svg>`;
+
+const godOverlay = document.getElementById('god-overlay');
+const godCardImg = document.getElementById('god-card-img');
+const godNameEl = document.getElementById('god-name');
+let pendingGodIndex = null;
+
+// crea el botón, el título y el aura dentro de cada hueco (no hace falta tocar el HTML)
+function injectGodUI() {
+    teamSlots.forEach((slot, index) => {
+        slot.insertAdjacentHTML('beforeend', `
+            <div class="slot-god-glow"></div>
+            <div class="slot-god-title">${CROWN_SVG}<span>Dios de Locke</span></div>
+            <button type="button" class="slot-ascend" aria-label="Ascender a Dios de Locke">${CROWN_SVG}<span>Ascender</span></button>
+        `);
+
+        slot.querySelector('.slot-ascend').addEventListener('click', (e) => {
+            e.stopPropagation(); // si no, el click llegaría al hueco y quitaría el Pokémon
+            openGodModal(index);
+        });
+    });
+}
+injectGodUI();
+
+function pokemonDisplayName(entry) {
+    if (entry.nickname) return entry.nickname;
+    const species = POKEMON_LIST[entry.id - 1];
+    return species ? species.name[0].toUpperCase() + species.name.slice(1) : `#${entry.id}`;
+}
+
+// sincroniza la interfaz con pokemonTeam: aura, título y botones. Solo puede haber UN dios
+function applyGodState() {
+    const container = document.getElementById('team-slots');
+    let hasGod = false;
+
+    teamSlots.forEach((slot, i) => {
+        const p = pokemonTeam[i];
+        const occupied = slot.classList.contains('filled') || slot.classList.contains('loading');
+        const isGod = !hasGod && !!(p && p.isGod) && occupied;
+        if (isGod) hasGod = true;
+        slot.classList.toggle('is-god', isGod);
+    });
+
+    container.classList.toggle('has-god', hasGod);
+}
+
+function openGodModal(index) {
+    const entry = pokemonTeam[index];
+    if (!entry || !entry.id) return;
+    if (pokemonTeam.some(p => p && p.isGod)) return; // ya hay un dios
+
+    pendingGodIndex = index;
+    godCardImg.src = entry.image || `home/${entry.id}.png`;
+    godCardImg.alt = pokemonDisplayName(entry);
+    godNameEl.textContent = `“${pokemonDisplayName(entry)}”`;
+
+    godOverlay.classList.add('open');
+    setTimeout(() => document.getElementById('btn-god-accept').focus(), 350);
+}
+
+function closeGodModal() {
+    godOverlay.classList.remove('open');
+    pendingGodIndex = null;
+}
+
+function confirmGod() {
+    if (pendingGodIndex === null) return;
+    const index = pendingGodIndex;
+    const entry = pokemonTeam[index];
+    if (!entry || !entry.id) { closeGodModal(); return; }
+
+    pokemonTeam.forEach(p => { if (p) delete p.isGod; }); // seguridad: solo uno
+    entry.isGod = true;
+    registerGod(entry);          // <- nuevo: queda en el registro para siempre
+    saveToLocalStorage();
+    updateTeamCount();
+
+    const slot = teamSlots[index];
+    slot.classList.add('god-flash');
+    setTimeout(() => slot.classList.remove('god-flash'), 1100);
+
+    closeGodModal();
+    showToast(`${pokemonDisplayName(entry)} es ahora Dios de Locke`);
+}
+document.getElementById('btn-god-accept').addEventListener('click', confirmGod);
+godOverlay.addEventListener('click', (e) => { if (e.target === godOverlay) closeGodModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeGodModal(); });
+
+// ---------- registro de Dioses de Locke ----------
+const registryOverlay = document.getElementById('registry-overlay');
+const registryGrid = document.getElementById('registry-grid');
+const registryCount = document.getElementById('registry-count');
+const registrySub = document.getElementById('registry-sub');
+
+function escapeHTML(str) {
+    return String(str).replace(/[&<>"']/g, c => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+}
+
+// guarda al Pokémon en el historial (si ya estaba con ese mote, no se duplica)
+function registerGod(entry) {
+    const already = godHistory.some(g => g.id === entry.id && g.nickname === entry.nickname);
+    if (already) return;
+
+    const species = POKEMON_LIST[entry.id - 1];
+    godHistory.push({
+        id: entry.id,
+        nickname: entry.nickname || '',
+        species: species ? species.name : '',
+        image: entry.image || '',
+        ascendedAt: new Date().toISOString()
+    });
+    renderRegistry();
+}
+
+function renderRegistry() {
+    const n = godHistory.length;
+    registryCount.textContent = n;
+    registryCount.classList.toggle('is-zero', n === 0);
+    registrySub.textContent = n === 0
+        ? 'Ningún ascenso todavía'
+        : `${n} ${n === 1 ? 'Pokémon ha ostentado' : 'Pokémon han ostentado'} el título`;
+
+    if (n === 0) {
+        registryGrid.innerHTML = `
+            <div class="registry-empty">
+                ${CROWN_SVG}
+                <span>Aún no has ascendido a nadie.<br>Pasa el ratón sobre un Pokémon del equipo y pulsa «Ascender».</span>
+            </div>`;
+        return;
+    }
+
+    const currentGod = pokemonTeam.find(p => p && p.isGod);
+
+    registryGrid.innerHTML = godHistory.map((g, i) => {
+        const src = g.image || `home/${g.id}.png`;
+        const isCard = src.includes('assets.tcgdex.net');
+        const species = g.species ? g.species[0].toUpperCase() + g.species.slice(1) : `#${g.id}`;
+        const title = g.nickname || species;
+        const isCurrent = currentGod && currentGod.id === g.id && currentGod.nickname === g.nickname;
+        const date = g.ascendedAt ? new Date(g.ascendedAt).toLocaleDateString('es-ES') : '';
+
+        return `
+            <article class="god-entry" style="--i:${i}">
+                <div class="god-entry-art${isCard ? '' : ' is-sprite'}">
+                    <img src="${escapeHTML(src)}" alt="${escapeHTML(title)}">
+                    <span class="god-entry-rank">${CROWN_SVG}${i + 1}</span>
+                    ${isCurrent ? '<span class="god-entry-current">Actual</span>' : ''}
+                </div>
+                <div class="god-entry-info">
+                    <div class="god-entry-nick">${escapeHTML(title)}</div>
+                    ${g.nickname ? `<div class="god-entry-species">${escapeHTML(species)}</div>` : ''}
+                    ${date ? `<div class="god-entry-date">Ascendido el ${date}</div>` : ''}
+                </div>
+            </article>`;
+    }).join('');
+}
+
+function openRegistry() {
+    renderRegistry(); // refresca también la etiqueta "Actual"
+    registryOverlay.classList.add('open');
+}
+function closeRegistry() {
+    registryOverlay.classList.remove('open');
+}
+
+document.getElementById('btn-registry').addEventListener('click', openRegistry);
+document.getElementById('registry-close').addEventListener('click', closeRegistry);
+registryOverlay.addEventListener('click', (e) => { if (e.target === registryOverlay) closeRegistry(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeRegistry(); });
+
+renderRegistry();
 
 // Peticion api de pokemon
 async function getPokemon() {

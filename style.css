@@ -1546,3 +1546,529 @@
   .type-row{ grid-template-columns: 30px 1fr auto; }
   .type-name{ display:none; }   /* en móvil solo icono + barra + contadores */
 }
+
+/* ---------- Dios de Locke ---------- */
+:root{
+  --god: #ffd76a;
+  --god-deep: #f2a900;
+  --god-glow: rgba(255,200,87,.55);
+}
+
+/* botón dorado "Ascender" (aparece al hacer hover sobre un hueco) */
+.slot-ascend{
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  overflow: hidden;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #2b1c00;
+  background: linear-gradient(135deg, #ffe08a, #ffc857 45%, var(--god-deep));
+  border: 1px solid rgba(255,255,255,.55);
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity .25s var(--ease), transform .25s var(--ease);
+  animation: ascend-pulse 2s ease-in-out infinite;
+}
+.slot-ascend svg{ width: 12px; height: 12px; flex-shrink: 0; }
+
+/* destello que cruza el botón */
+.slot-ascend::after{
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.75) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: ascend-sheen 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes ascend-pulse{
+  0%, 100%{ box-shadow: 0 0 0 0 rgba(255,200,87,.55), 0 6px 18px -6px rgba(255,200,87,.8); }
+  50%{ box-shadow: 0 0 0 6px rgba(255,200,87,0), 0 6px 22px -4px rgba(255,200,87,1); }
+}
+@keyframes ascend-sheen{
+  0%, 55%{ transform: translateX(-120%); }
+  100%{ transform: translateX(120%); }
+}
+
+/* solo en huecos con Pokémon, y solo si todavía no hay ningún dios */
+.team-slot.filled:not(.is-god) .slot-ascend{ display: inline-flex; }
+.team-slots.has-god .slot-ascend{ display: none !important; }
+
+.team-slot.filled:hover .slot-ascend,
+.slot-ascend:focus-visible{
+  opacity: 1;
+  transform: translateY(0);
+}
+.team-slot.filled .slot-ascend:hover{ transform: translateY(0) scale(1.06); }
+
+/* en pantallas táctiles no hay hover: el botón se ve siempre */
+@media (hover: none){
+  .slot-ascend{ opacity: 1; transform: none; }
+}
+
+/* título superior */
+.slot-god-title{
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 5px 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #2b1c00;
+  background: linear-gradient(90deg, #c98f00, #ffd76a 30%, #fff1b0 50%, #ffd76a 70%, #c98f00);
+  background-size: 200% 100%;
+  box-shadow: 0 4px 16px -4px rgba(255,200,87,.7);
+  animation: god-title-sheen 3.2s linear infinite;
+}
+.slot-god-title svg{ width: 13px; height: 13px; }
+@keyframes god-title-sheen{
+  from{ background-position: 200% 0; }
+  to{ background-position: -200% 0; }
+}
+
+/* capa interior: brillo dorado en los bordes + destello diagonal */
+.slot-god-glow{
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: none;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 28px rgba(255,200,87,.5);
+  background: linear-gradient(115deg, transparent 40%, rgba(255,240,180,.22) 50%, transparent 60%);
+  background-size: 250% 100%;
+}
+
+/* aura exterior pulsante */
+.team-slot.filled.is-god,
+.team-slot.filled.is-god:hover{
+  z-index: 2;
+  border-color: var(--god);
+  animation: god-aura 2.6s ease-in-out infinite;
+}
+.team-slot.is-god .slot-god-title{ display: flex; }
+.team-slot.is-god .slot-god-glow{
+  display: block;
+  animation: god-sheen 3.4s linear infinite;
+}
+@keyframes god-aura{
+  0%, 100%{ box-shadow: 0 0 0 1px rgba(255,215,106,.9), 0 0 18px 2px rgba(255,200,87,.55), 0 0 46px 6px rgba(255,200,87,.28); }
+  50%{ box-shadow: 0 0 0 1px rgba(255,235,160,1), 0 0 28px 6px rgba(255,200,87,.8), 0 0 72px 14px rgba(255,200,87,.42); }
+}
+@keyframes god-sheen{
+  from{ background-position: 200% 0; }
+  to{ background-position: -200% 0; }
+}
+
+/* el título ocupa la parte de arriba: "Quitar" baja un poco */
+.team-slot.filled.is-god::after{ top: 38px; }
+
+/* destello al ascender */
+.team-slot.is-god.god-flash .slot-god-glow{
+  animation: god-sheen 3.4s linear infinite, god-flash .9s ease-out 1;
+}
+@keyframes god-flash{
+  0%{ background-color: rgba(255,235,160,.9); }
+  100%{ background-color: rgba(255,235,160,0); }
+}
+
+/* ---------- popup de ascenso ---------- */
+.god-overlay{
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(8,9,18,.6);
+  -webkit-backdrop-filter: grayscale(1) blur(4px) brightness(.5);
+  backdrop-filter: grayscale(1) blur(4px) brightness(.5);   /* fondo desactivado y en gris */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .4s var(--ease);
+}
+.god-overlay.open{ opacity: 1; pointer-events: auto; }
+
+.god-popup{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+}
+.god-overlay.open .god-popup{ animation: god-zoom .8s var(--ease) both; }
+@keyframes god-zoom{
+  from{ opacity: 0; transform: scale(.78); }
+  to{ opacity: 1; transform: scale(1); }
+}
+
+.god-card-wrap{
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+/* rayos de luz girando despacio detrás de la carta */
+.god-rays{
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(900px, 170vw);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  background: repeating-conic-gradient(from 0deg, rgba(255,214,102,.3) 0deg 7deg, transparent 7deg 20deg);
+  -webkit-mask-image: radial-gradient(circle closest-side, #000 12%, transparent 100%);
+  mask-image: radial-gradient(circle closest-side, #000 12%, transparent 100%);
+  opacity: .55;
+  animation: god-spin 28s linear infinite;
+  pointer-events: none;
+}
+@keyframes god-spin{ to{ rotate: 360deg; } }
+
+/* resplandor dorado que respira */
+.god-card-wrap::before{
+  content: '';
+  position: absolute;
+  inset: -14%;
+  background: radial-gradient(circle, rgba(255,200,87,.5), transparent 65%);
+  filter: blur(22px);
+  animation: god-pulse 2.6s ease-in-out infinite;
+}
+@keyframes god-pulse{
+  0%, 100%{ opacity: .55; transform: scale(.94); }
+  50%{ opacity: 1; transform: scale(1.06); }
+}
+
+.god-card-img{
+  position: relative;
+  z-index: 1;
+  height: min(50vh, 400px);
+  width: auto;
+  max-width: 78vw;
+  border-radius: 14px;
+  filter: drop-shadow(0 20px 50px rgba(0,0,0,.6)) drop-shadow(0 0 30px rgba(255,200,87,.45));
+}
+
+.god-text,
+.god-title,
+.btn-god{ position: relative; z-index: 1; margin: 0; opacity: 0; }
+
+.god-text{
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  letter-spacing: .06em;
+  color: var(--text);
+}
+.god-name{ color: var(--god); font-weight: 700; }
+
+.god-title{
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(16px, 3.2vw, 28px);
+  line-height: 1.4;
+  background: linear-gradient(90deg, #ffb703, #fff1b0, #ffb703);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 14px rgba(255,200,87,.55));
+  animation: god-title-text 3s linear infinite;
+}
+@keyframes god-title-text{
+  from{ background-position: 200% 0; }
+  to{ background-position: -200% 0; }
+}
+
+.btn-god{
+  appearance: none;
+  margin-top: 6px;
+  padding: 12px 34px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  color: #2b1c00;
+  background: linear-gradient(135deg, #ffe08a, #ffc857 45%, var(--god-deep));
+  border: 1px solid rgba(255,255,255,.55);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 10px 30px -8px rgba(255,200,87,.7);
+  transition: transform .25s var(--ease), box-shadow .25s var(--ease);
+}
+.btn-god:hover{ transform: translateY(-2px) scale(1.04); box-shadow: 0 14px 38px -8px rgba(255,200,87,.95); }
+.btn-god:active{ transform: scale(.97); }
+.btn-god:focus-visible{ outline: 2px solid #fff; outline-offset: 3px; }
+
+/* aparición escalonada del texto */
+.god-overlay.open .god-text{ animation: god-rise .6s var(--ease) .30s both; }
+.god-overlay.open .god-title{ animation: god-rise .6s var(--ease) .45s both, god-title-text 3s linear infinite; }
+.god-overlay.open .btn-god{ animation: god-rise .6s var(--ease) .65s both; }
+@keyframes god-rise{
+  from{ opacity: 0; transform: translateY(14px); }
+  to{ opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- registro de Dioses de Locke ---------- */
+
+.wrap{ padding-top: 56px; }
+
+.registry-card{
+  position: absolute;          /* anclada a la esquina superior izquierda del dashboard */
+  top: 10px;
+  left: clamp(18px, 5vw, 56px);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 6px 5px 16px;
+  background: linear-gradient(160deg, var(--surface), var(--bg-soft));
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: 0 14px 30px -18px rgba(0,0,0,.7);
+  animation: rise .7s var(--ease) both;
+}
+
+.registry-label{
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.registry-btn{
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+  background: rgba(255,200,87,.1);
+  border: 1px solid rgba(255,200,87,.4);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform .25s var(--ease), background .25s var(--ease), box-shadow .25s var(--ease);
+}
+.registry-btn svg{ width: 13px; height: 13px; flex-shrink: 0; }
+.registry-btn:hover{
+  transform: translateY(-1px);
+  background: rgba(255,200,87,.2);
+  box-shadow: 0 8px 20px -10px rgba(255,200,87,.75);
+}
+.registry-btn:active{ transform: scale(.97); }
+.registry-btn:focus-visible{ outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.registry-btn b{
+  min-width: 22px;
+  padding: 2px 7px;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #2b1c00;
+  background: var(--gold);
+  border-radius: 999px;
+}
+.registry-btn b.is-zero{ color: var(--gold); background: rgba(255,200,87,.22); }
+
+/* ---- popup ---- */
+.registry-modal{
+  /* mismo recorte que los huecos del equipo: si lo cambias allí, cámbialo aquí */
+  --crop-x: .07;
+  --crop-y: .11;
+  --crop-w: .86;
+  --crop-h: .43;
+  width: min(780px, 94vw);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  padding: 26px 26px 20px;
+}
+
+.registry-head{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.registry-head h2{ margin: 0 0 10px; }
+.registry-sub{
+  margin: 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: .04em;
+  color: var(--text-dim);
+}
+
+.registry-close{
+  appearance: none;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: color .25s var(--ease), border-color .25s var(--ease), transform .25s var(--ease);
+}
+.registry-close svg{ width: 15px; height: 15px; }
+.registry-close:hover{ color: var(--text); border-color: var(--accent); transform: rotate(90deg); }
+
+.registry-grid{
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+  gap: 16px;
+  padding: 4px 4px 8px;
+}
+
+/* tarjeta de cada Dios de Locke */
+.god-entry{
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(165deg, var(--surface-2), var(--bg-soft));
+  border: 1px solid rgba(255,200,87,.38);
+  border-radius: 14px;
+  box-shadow: 0 0 22px -8px rgba(255,200,87,.35), 0 16px 30px -18px rgba(0,0,0,.7);
+  animation: rise .5s var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+/* arte recortado de la carta */
+.god-entry-art{
+  position: relative;
+  aspect-ratio: 1.455;
+  overflow: hidden;
+}
+.god-entry-art img{
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(100% / var(--crop-w));
+  height: auto;
+  max-width: none;
+  display: block;
+  transform: translate(calc(var(--crop-x) * -100%), calc(var(--crop-y) * -100%));
+}
+/* sprite de respaldo (no es una carta): sin recorte */
+.god-entry-art.is-sprite img{
+  position: static;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 10px;
+  transform: none;
+}
+.god-entry-art::after{
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, transparent 55%, rgba(20,22,42,.55)),
+    linear-gradient(115deg, transparent 40%, rgba(255,240,180,.16) 50%, transparent 60%);
+  pointer-events: none;
+}
+
+.god-entry-rank{
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px 3px 7px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #2b1c00;
+  background: linear-gradient(135deg, #ffe08a, #ffc857 50%, #f2a900);
+  border-radius: 999px;
+}
+.god-entry-rank svg{ width: 11px; height: 11px; }
+
+.god-entry-current{
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  padding: 3px 9px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--alive);
+  background: rgba(20,22,42,.8);
+  border: 1px solid rgba(56,224,164,.45);
+  border-radius: 999px;
+}
+
+.god-entry-info{
+  padding: 10px 14px 13px;
+  text-align: center;
+}
+.god-entry-nick{
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--gold);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.god-entry-species{
+  margin-top: 2px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.god-entry-date{
+  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: .06em;
+  color: var(--text-dim);
+  opacity: .7;
+}
+
+.registry-empty{
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 44px 10px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+.registry-empty svg{ width: 34px; height: 34px; color: var(--gold); opacity: .5; }

@@ -56,7 +56,15 @@
 
   <!-- ---------- STATS CARD ---------- -->
   <main class="wrap">
-
+    <!-- ---------- REGISTRO (carta fina arriba a la izquierda) ---------- -->
+    <div class="registry-card">
+      <span class="registry-label">Registro</span>
+      <button type="button" class="registry-btn" id="btn-registry">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 11H5L3 7Zm2 13h14v2H5v-2Z"/></svg>
+        <span>Dioses de Locke</span>
+        <b id="registry-count" class="is-zero">0</b>
+      </button>
+    </div>
     <div class="top-row">
       <div class="card lives-card">
         <div class="lives-panel">
@@ -323,6 +331,33 @@
       <div class="modal-actions">
         <button class="btn btn-primary" id="btn-nickname-confirm">Añadir al equipo</button>
       </div>
+    </div>
+  </div>
+    <!-- ---------- MODAL: DIOS DE LOCKE ---------- -->
+  <div class="god-overlay" id="god-overlay">
+    <div class="god-popup">
+      <div class="god-card-wrap">
+        <div class="god-rays"></div>
+        <img class="god-card-img" id="god-card-img" src="" alt="">
+      </div>
+      <p class="god-text"><span class="god-name" id="god-name"></span> ascendido a</p>
+      <h2 class="god-title">DIOS DE LOCKE!</h2>
+      <button type="button" class="btn-god" id="btn-god-accept">Aceptar</button>
+    </div>
+  </div>
+    <!-- ---------- MODAL: REGISTRO DE DIOSES DE LOCKE ---------- -->
+  <div class="modal-overlay" id="registry-overlay">
+    <div class="modal registry-modal">
+      <div class="registry-head">
+        <div>
+          <h2>Dioses de Locke</h2>
+          <p class="registry-sub" id="registry-sub">Ningún ascenso todavía</p>
+        </div>
+        <button type="button" class="registry-close" id="registry-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="registry-grid" id="registry-grid"></div>
     </div>
   </div>
 
