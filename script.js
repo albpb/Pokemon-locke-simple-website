@@ -81,7 +81,198 @@ let pokemonTeam = [
 const TOTAL_BADGES = 8;
 var badges = 0;
 
+// ---------- tabla de tipos ----------
+const TYPE_ICON_PATH = 'types/';   
 
+const POKEMON_TYPES = [
+    { key: 'normal', label: 'Normal', color: '#A8A77A' },
+    { key: 'fire', label: 'Fuego', color: '#EE8130' },
+    { key: 'water', label: 'Agua', color: '#6390F0' },
+    { key: 'electric', label: 'Eléctrico', color: '#F7D02C' },
+    { key: 'grass', label: 'Planta', color: '#7AC74C' },
+    { key: 'ice', label: 'Hielo', color: '#96D9D6' },
+    { key: 'fighting', label: 'Lucha', color: '#C22E28' },
+    { key: 'poison', label: 'Veneno', color: '#A33EA1' },
+    { key: 'ground', label: 'Tierra', color: '#E2BF65' },
+    { key: 'flying', label: 'Volador', color: '#A98FF3' },
+    { key: 'psychic', label: 'Psíquico', color: '#F95587' },
+    { key: 'bug', label: 'Bicho', color: '#A6B91A' },
+    { key: 'rock', label: 'Roca', color: '#B6A136' },
+    { key: 'ghost', label: 'Fantasma', color: '#735797' },
+    { key: 'dragon', label: 'Dragón', color: '#6F35FC' },
+    { key: 'dark', label: 'Siniestro', color: '#705746' },
+    { key: 'steel', label: 'Acero', color: '#B7B7CE' },
+    { key: 'fairy', label: 'Hada', color: '#D685AD' }
+];
+
+// Tabla ofensiva: qué tipos recibe ×2 (double), ×½ (half) o ×0 (zero) cada tipo atacante.
+const TYPE_CHART = {
+    normal: { double: [], half: ['rock', 'steel'], zero: ['ghost'] },
+    fire: { double: ['grass', 'ice', 'bug', 'steel'], half: ['fire', 'water', 'rock', 'dragon'], zero: [] },
+    water: { double: ['fire', 'ground', 'rock'], half: ['water', 'grass', 'dragon'], zero: [] },
+    electric: { double: ['water', 'flying'], half: ['electric', 'grass', 'dragon'], zero: ['ground'] },
+    grass: { double: ['water', 'ground', 'rock'], half: ['fire', 'grass', 'poison', 'flying', 'bug', 'dragon', 'steel'], zero: [] },
+    ice: { double: ['grass', 'ground', 'flying', 'dragon'], half: ['fire', 'water', 'ice', 'steel'], zero: [] },
+    fighting: { double: ['normal', 'ice', 'rock', 'dark', 'steel'], half: ['poison', 'flying', 'psychic', 'bug', 'fairy'], zero: ['ghost'] },
+    poison: { double: ['grass', 'fairy'], half: ['poison', 'ground', 'rock', 'ghost'], zero: ['steel'] },
+    ground: { double: ['fire', 'electric', 'poison', 'rock', 'steel'], half: ['grass', 'bug'], zero: ['flying'] },
+    flying: { double: ['grass', 'fighting', 'bug'], half: ['electric', 'rock', 'steel'], zero: [] },
+    psychic: { double: ['fighting', 'poison'], half: ['psychic', 'steel'], zero: ['dark'] },
+    bug: { double: ['grass', 'psychic', 'dark'], half: ['fire', 'fighting', 'poison', 'flying', 'ghost', 'steel', 'fairy'], zero: [] },
+    rock: { double: ['fire', 'ice', 'flying', 'bug'], half: ['fighting', 'ground', 'steel'], zero: [] },
+    ghost: { double: ['psychic', 'ghost'], half: ['dark'], zero: ['normal'] },
+    dragon: { double: ['dragon'], half: ['steel'], zero: ['fairy'] },
+    dark: { double: ['psychic', 'ghost'], half: ['fighting', 'dark', 'fairy'], zero: [] },
+    steel: { double: ['ice', 'rock', 'fairy'], half: ['fire', 'water', 'electric', 'steel'], zero: [] },
+    fairy: { double: ['fighting', 'dragon', 'dark'], half: ['fire', 'poison', 'steel'], zero: [] }
+};
+
+// multiplicador de daño que recibe un Pokémon (de 1 o 2 tipos) al ser atacado por "attackType"
+function getEffectiveness(attackType, defenderTypes) {
+    const chart = TYPE_CHART[attackType];
+    return defenderTypes.reduce((mult, def) => {
+        if (chart.zero.includes(def)) return mult * 0;
+        if (chart.double.includes(def)) return mult * 2;
+        if (chart.half.includes(def)) return mult * 0.5;
+        return mult;
+    }, 1);
+}
+
+// vector de cobertura: [{ tipo: 'water', fuertes: 2, debiles: 3 }, ...]
+let typeCoverage = POKEMON_TYPES.map(t => ({ tipo: t.key, fuertes: 0, debiles: 0 }));
+
+function computeTypeCoverage() {
+    const matrix = {}; // matrix[tipo][hueco] = multiplicador (o null si el hueco está vacío)
+
+    const vector = POKEMON_TYPES.map(t => {
+        const row = { tipo: t.key, fuertes: 0, debiles: 0 };
+        matrix[t.key] = pokemonTeam.map(p => {
+            if (!p || !p.id || !Array.isArray(p.types) || p.types.length === 0) return null;
+            const m = getEffectiveness(t.key, p.types);
+            if (m > 1) row.debiles++;
+            else if (m < 1) row.fuertes++;
+            return m;
+        });
+        return row;
+    });
+
+    return { vector, matrix };
+}
+
+// ---------- tipos desde la PokeAPI ----------
+const typesCache = new Map(); // id -> ['fire', 'flying']
+
+async function getPokemonTypes(id) {
+    if (typesCache.has(id)) return typesCache.get(id);
+
+    const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+    if (!res.ok) throw new Error(`PokeAPI HTTP ${res.status}`);
+
+    const data = await res.json();
+    const types = data.types
+        .sort((a, b) => a.slot - b.slot)
+        .map(t => t.type.name);
+
+    typesCache.set(id, types);
+    return types;
+}
+
+// ---------- panel de cobertura ----------
+function pokemonLabel(entry) {
+    if (!entry || !entry.id) return '';
+    const species = POKEMON_LIST[entry.id - 1];
+    const base = species ? species.name[0].toUpperCase() + species.name.slice(1) : `#${entry.id}`;
+    return entry.nickname ? `${entry.nickname} (${base})` : base;
+}
+
+function fmtMult(m) {
+    if (m === 0) return 'Inmune (×0)';
+    if (m === 0.25) return '×¼';
+    if (m === 0.5) return '×½';
+    return `×${m}`;
+}
+
+function segClass(m) {
+    if (m === null) return '';
+    if (m === 0) return ' strong immune';
+    if (m < 1) return ' strong';
+    if (m === 1) return ' neutral';
+    if (m >= 4) return ' weak x4';
+    return ' weak';
+}
+
+function buildTypeGrid(grid) {
+    console.log("hola")
+    grid.innerHTML = POKEMON_TYPES.map(t => `
+        <div class="type-row" data-type="${t.key}" style="--type-color:${t.color}">
+            <span class="type-badge" title="${t.label}">
+                <img class="type-icon" src="${TYPE_ICON_PATH}${t.key}.svg" alt="" onerror="this.remove()">
+                <span class="type-abbr">${t.label.slice(0, 3)}</span>
+            </span>
+            <span class="type-name">${t.label}</span>
+            <span class="type-bar">${'<i class="seg"></i>'.repeat(6)}</span>
+            <span class="type-count">
+                <b class="c-strong" title="Pokémon que lo resisten">0</b>
+                <b class="c-weak" title="Pokémon débiles a este tipo">0</b>
+            </span>
+        </div>`).join('');
+}
+
+function renderTypeSummary(vector) {
+    const el = document.getElementById('type-summary');
+    if (!el) return;
+
+    const hasTeam = pokemonTeam.some(p => p && Array.isArray(p.types) && p.types.length);
+    if (!hasTeam) {
+        el.innerHTML = '<span class="sum-empty">Añade Pokémon al equipo para ver su cobertura defensiva</span>';
+        return;
+    }
+
+    const net = r => r.fuertes - r.debiles;
+    const label = key => POKEMON_TYPES.find(t => t.key === key).label;
+    const worst = vector.filter(r => net(r) < 0).sort((a, b) => net(a) - net(b)).slice(0, 3);
+    const best = vector.filter(r => net(r) > 0).sort((a, b) => net(b) - net(a)).slice(0, 3);
+
+    const chips = (list, cls) => list.length
+        ? list.map(r => `<span class="sum-chip ${cls}">${label(r.tipo)} <b>${cls === 'weak' ? r.debiles : r.fuertes}</b></span>`).join('')
+        : '<span class="sum-none">—</span>';
+
+    el.innerHTML = `
+        <div class="sum-group"><span class="sum-title">Puntos débiles</span>${chips(worst, 'weak')}</div>
+        <div class="sum-group"><span class="sum-title">Mejor cubierto</span>${chips(best, 'strong')}</div>`;
+}
+
+function updateTypePanel() {
+    const grid = document.getElementById('type-grid');
+    if (!grid) return;
+    if (!grid.children.length) buildTypeGrid(grid);
+
+    const { vector, matrix } = computeTypeCoverage();
+    typeCoverage = vector;
+
+    vector.forEach(r => {
+        const row = grid.querySelector(`.type-row[data-type="${r.tipo}"]`);
+        if (!row) return;
+
+        const segs = row.querySelectorAll('.seg');
+        matrix[r.tipo].forEach((m, i) => {
+            segs[i].className = 'seg' + segClass(m);
+            segs[i].title = m === null ? '' : `${pokemonLabel(pokemonTeam[i])}: ${fmtMult(m)}`;
+        });
+
+        const strongEl = row.querySelector('.c-strong');
+        const weakEl = row.querySelector('.c-weak');
+        strongEl.textContent = r.fuertes;
+        weakEl.textContent = r.debiles;
+        strongEl.classList.toggle('is-zero', r.fuertes === 0);
+        weakEl.classList.toggle('is-zero', r.debiles === 0);
+
+        row.classList.toggle('risk', r.debiles > r.fuertes);
+        row.classList.toggle('good', r.fuertes > r.debiles);
+    });
+
+    renderTypeSummary(vector);
+}
 
 function renderGrid() {
     grid.innerHTML = '';
@@ -233,15 +424,22 @@ async function loadTeamSlot(index) {
     const entry = pokemonTeam[index];
     if (!entry || entry.id === 0) return;
 
-    if (!entry.image) {
-        setTeamSlotLoading(index);
-        entry.image = await getRandomCardImage(
-            POKEMON_LIST[entry.id - 1] || { id: entry.id },
-            entry.nickname
-        );
-        saveToLocalStorage();
-    }
-    setTeamSlot(index, entry.image, entry.nickname);
+    const needsImage = !entry.image;
+    const needsTypes = !Array.isArray(entry.types) || entry.types.length === 0;
+    if (needsImage || needsTypes) setTeamSlotLoading(index);
+
+    const pokemon = POKEMON_LIST[entry.id - 1] || { id: entry.id };
+    const [image, types] = await Promise.all([
+        needsImage ? getRandomCardImage(pokemon, entry.nickname) : entry.image,
+        needsTypes ? getPokemonTypes(entry.id).catch(() => []) : entry.types
+    ]);
+
+    if (pokemonTeam[index] !== entry) return;
+
+    entry.image = image;
+    entry.types = types;
+    setTeamSlot(index, image, entry.nickname);
+    saveToLocalStorage();
 }
 
 function loadJSON(event) {
@@ -279,7 +477,8 @@ function validFormat(d) {
         Array.isArray(d.pokemonTeam) && d.pokemonTeam.length === 6 &&
         d.pokemonTeam.every(p =>
             p && Number.isInteger(p.id) && typeof p.nickname === 'string' &&
-            (p.image === undefined || typeof p.image === 'string')
+            (p.image === undefined || typeof p.image === 'string') &&
+            (p.types === undefined || Array.isArray(p.types))
         )
     );
 }
@@ -323,14 +522,22 @@ async function confirmNickname() {
     closeNicknameModal();
     if (freeIndex === -1) return;
 
-    pokemonTeam[freeIndex] = { id: pokemon.id, nickname: nickname, image: '' };
+    const entry = { id: pokemon.id, nickname: nickname, image: '', types: [] };
+    pokemonTeam[freeIndex] = entry;
     saveToLocalStorage();
 
     setTeamSlotLoading(freeIndex);
-    const image = await getRandomCardImage(pokemon, nickname);
 
-    pokemonTeam[freeIndex].image = image;
-    setTeamSlot(freeIndex, image, nickname);
+    const [image, types] = await Promise.all([
+        getRandomCardImage(pokemon, nickname),
+        getPokemonTypes(pokemon.id).catch(() => [])
+    ]);
+
+    if (pokemonTeam[freeIndex] !== entry) return; // se reinició la partida mientras cargaba
+
+    entry.image = image;
+    entry.types = types;
+    setTeamSlot(freeIndex, image, nickname); // también actualiza el panel de tipos
     saveToLocalStorage();
 }
 
@@ -338,9 +545,6 @@ document.getElementById('btn-nickname-confirm').addEventListener('click', () => 
 inputNickname.addEventListener('keydown', (e) => { if (e.key === 'Enter') confirmNickname(true); });
 nicknameOverlay.addEventListener('click', (e) => { if (e.target === nicknameOverlay) closeNicknameModal(); });
 
-// ---------- team panel (solo visual) ----------
-
-// POKEMON_LIST[0] = {id: id, name: name}
 
 
 const searchInput = document.getElementById('pokemon-search');
@@ -406,6 +610,7 @@ function updateTeamCount() {
     const total = teamSlots.length;
     teamCountEl.textContent = `${filled} / ${total}`;
     teamCompleteChip.classList.toggle('show', filled === total);
+    updateTypePanel();
 }
 
 
@@ -704,8 +909,8 @@ teamSlots.forEach(ts => {
     ts.addEventListener('click', () => {
         if (ts.classList.contains('loading')) return;
         const slot = parseInt(ts.dataset.slot, 10);
+        pokemonTeam[slot] = { id: 0, nickname: "", image: "", types: [] };
         clearTeamSlot(slot);
-        pokemonTeam[slot] = { id: 0, nickname: "", image: "" };
         saveToLocalStorage();
     });
 });
