@@ -453,6 +453,20 @@ async function loadTeamSlot(index) {
     entry.types = types;
     setTeamSlot(index, image, entry.nickname);
     saveToLocalStorage();
+
+    // partidas antiguas: aún no sabemos si tiene formas
+    if (!Array.isArray(entry.forms)) {
+        try {
+            const forms = await getPokemonForms(entry.id);
+            if (pokemonTeam[index] !== entry) return;
+            entry.forms = forms;
+            entry.formIndex = 0;
+            updateTeamCount(); // muestra el botón
+            saveToLocalStorage();
+        } catch (error) {
+            console.error('Formas:', error);
+        }
+    }
 }
 
 function loadJSON(event) {
@@ -496,7 +510,9 @@ function validFormat(d) {
             p && Number.isInteger(p.id) && typeof p.nickname === 'string' &&
             (p.image === undefined || typeof p.image === 'string') &&
             (p.types === undefined || Array.isArray(p.types)) &&
-            (p.isGod === undefined || typeof p.isGod === 'boolean')
+            (p.isGod === undefined || typeof p.isGod === 'boolean') &&
+            (p.forms === undefined || Array.isArray(p.forms)) &&
+            (p.formIndex === undefined || Number.isInteger(p.formIndex))
         )
 
     );
@@ -547,16 +563,19 @@ async function confirmNickname() {
 
     setTeamSlotLoading(freeIndex);
 
-    const [image, types] = await Promise.all([
-        getRandomCardImage(pokemon, nickname),
-        getPokemonTypes(pokemon.id).catch(() => [])
+    const [forms, image] = await Promise.all([
+        getPokemonForms(pokemon.id).catch(() => null),
+        getRandomCardImage(pokemon, nickname)
     ]);
+    const types = (forms && forms[0].types) || await getPokemonTypes(pokemon.id).catch(() => []);
 
     if (pokemonTeam[freeIndex] !== entry) return; // se reinició la partida mientras cargaba
 
     entry.image = image;
     entry.types = types;
-    setTeamSlot(freeIndex, image, nickname); // también actualiza el panel de tipos
+    if (forms) { entry.forms = forms; entry.formIndex = 0; }
+
+    setTeamSlot(freeIndex, image, nickname);
     saveToLocalStorage();
 }
 
@@ -631,6 +650,7 @@ function updateTeamCount() {
     teamCountEl.textContent = `${filled} / ${total}`;
     teamCompleteChip.classList.toggle('show', filled === total);
     applyGodState();
+    applyFormState();
     updateTypePanel();
 }
 
@@ -950,12 +970,12 @@ async function getPokemonCards(pokemon) {
     const slug = normalizeName(overrides[pokemon.name] || pokemon.name);
 
     // la API busca por "contiene": pedimos con la palabra más larga y filtramos después
-    const term = slug.split(' ').sort((a, b) => b.length - a.length)[0];
+    const term = TCG_SEARCH_TERM[slug] || slug.split(' ').sort((a, b) => b.length - a.length)[0];
     const res = await fetch(`${TCGDEX_API}/cards?name=${encodeURIComponent(term)}`);
     if (!res.ok) throw new Error(`TCGdex HTTP ${res.status}`);
 
     const cards = await res.json();
-    const matcher = new RegExp(`(^| )${slug}( |$)`); // palabra completa: "mew" no coge "mewtwo"
+    const matcher = new RegExp(`(^| )${slug}( |$)`);
     const valid = cards
         .filter(c => c.image && matcher.test(normalizeName(c.name)))
         .sort((a, b) => a.id.localeCompare(b.id));
@@ -975,23 +995,209 @@ function preloadImage(src) {
 
 // devuelve la URL de una carta aleatoria; si algo falla, usa el sprite de siempre
 async function getRandomCardImage(pokemon, nickname = '') {
-    try {
-        if (pokemon && pokemon.name) {
-            const cards = await getPokemonCards(pokemon);
-            if (cards.length > 0) {
-                const seed = nickname
-                    ? `${pokemon.name}|${nickname.trim().toLowerCase()}`
-                    : pokemon.name;
-                const card = cards[seededIndex(seed, cards.length)];
-                const url = `${card.image}/high.webp`;
-                if (await preloadImage(url)) return url;
-            }
+    return (await findCardUrl(pokemon, nickname)) || `home/${pokemon.id}.png`;
+}
+
+// ---------- formas: regionales y Rotom ----------
+const REGION_FORMS = {
+    alola: { label: 'Alola', keyword: 'alolan' },
+    galar: { label: 'Galar', keyword: 'galarian' },
+    hisui: { label: 'Hisui', keyword: 'hisuian' },
+    paldea: { label: 'Paldea', keyword: 'paldean' }
+};
+const ROTOM_FORMS = {
+    heat: { label: 'Calor', keyword: 'heat' },
+    wash: { label: 'Lavado', keyword: 'wash' },
+    frost: { label: 'Frío', keyword: 'frost' },
+    fan: { label: 'Ventilador', keyword: 'fan' },
+    mow: { label: 'Corte', keyword: 'mow' }
+};
+const REGIONAL_KEYWORDS = Object.values(REGION_FORMS).map(f => f.keyword);
+const ROTOM_KEYWORDS = Object.values(ROTOM_FORMS).map(f => f.keyword);
+
+// excepciones manuales de TCGdex
+const TCG_SEARCH_TERM = { sirfetchd: 'fetch', farfetchd: 'fetch' }; // el apóstrofo rompe la búsqueda por nombre
+const TCG_ALLOW_REGIONAL_NAME = new Set(['sirfetchd']);              // sus cartas se llaman "Galarian Sirfetch'd"
+
+// decide si una variedad de la PokeAPI nos interesa (devuelve su etiqueta y palabra clave, o null)
+function classifyVariety(speciesName, varietyName) {
+    if (/totem/.test(varietyName)) return null;
+
+    if (speciesName === 'rotom') {
+        const m = varietyName.match(/^rotom-(heat|wash|frost|fan|mow)$/);
+        return m ? ROTOM_FORMS[m[1]] : null;
+    }
+
+    const m = varietyName.match(/-(alola|galar|hisui|paldea)(?:-(.+))?$/);
+    if (!m) return null;
+
+    const rest = m[2]; // p. ej. "combat-breed" (Tauros de Paldea) o "zen" (Darmanitan de Galar)
+    if (rest && !/breed|standard/.test(rest)) return null; // descarta gorras, zen, etc.
+
+    const base = REGION_FORMS[m[1]];
+    const extra = rest ? ` · ${rest.replace('-breed', '').replace(/-/g, ' ')}` : '';
+    return { label: base.label + extra, keyword: base.keyword };
+}
+
+const formsCache = new Map(); // id de especie -> formas
+
+// [{ name, label, keyword, types, speciesName }, ...]  — la posición 0 siempre es la forma normal
+async function getPokemonForms(id) {
+    if (formsCache.has(id)) return formsCache.get(id);
+
+    const res = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${id}`);
+    if (!res.ok) throw new Error(`PokeAPI HTTP ${res.status}`);
+    const species = await res.json();
+
+    const defaultVar = species.varieties.find(v => v.is_default) || species.varieties[0];
+    const extras = species.varieties
+        .filter(v => !v.is_default)
+        .map(v => ({ name: v.pokemon.name, info: classifyVariety(species.name, v.pokemon.name) }))
+        .filter(x => x.info);
+
+    const candidates = [
+        { name: defaultVar.pokemon.name, label: 'Normal', keyword: null },
+        ...extras.map(x => ({ name: x.name, label: x.info.label, keyword: x.info.keyword }))
+    ];
+
+    const resolved = await Promise.all(candidates.map(async (f, i) => {
+        try {
+            const types = await getPokemonTypes(i === 0 ? id : f.name); // acepta id o nombre
+            return { ...f, speciesName: species.name, types };
+        } catch (error) {
+            return null;
         }
+    }));
+
+    if (!resolved[0]) throw new Error('No se pudo obtener la forma normal');
+
+    const forms = resolved.filter(Boolean);
+    formsCache.set(id, forms);
+    return forms;
+}
+
+function hasWord(normalized, word) {
+    return new RegExp(`(^| )${word}( |$)`).test(normalized);
+}
+
+// cartas válidas para una forma concreta
+async function getCardsForForm(pokemon, form) {
+    const cards = await getPokemonCards(pokemon);
+
+    // forma con palabra clave (Galarian, Heat...): solo cartas que la contengan
+    if (form && form.keyword) {
+        return cards.filter(c => hasWord(normalizeName(c.name), form.keyword));
+    }
+
+    // forma normal: fuera las cartas regionales / de Rotom con electrodoméstico
+    if (TCG_ALLOW_REGIONAL_NAME.has(pokemon.name)) return cards;
+    const banned = [...REGIONAL_KEYWORDS, ...(pokemon.name === 'rotom' ? ROTOM_KEYWORDS : [])];
+    return cards.filter(c => {
+        const n = normalizeName(c.name);
+        return !banned.some(w => hasWord(n, w));
+    });
+}
+
+// URL de la carta (siempre la misma para esa forma + mote) o null si no hay ninguna
+async function findCardUrl(pokemon, nickname = '', form = null) {
+    try {
+        if (!pokemon || !pokemon.name) return null;
+
+        const cards = await getCardsForForm(pokemon, form);
+        if (cards.length === 0) return null;
+
+        const baseSeed = form && form.keyword ? form.name : pokemon.name;
+        const seed = nickname ? `${baseSeed}|${nickname.trim().toLowerCase()}` : baseSeed;
+        const url = `${cards[seededIndex(seed, cards.length)].image}/high.webp`;
+
+        return (await preloadImage(url)) ? url : null;
     } catch (error) {
         console.error('TCGdex:', error);
+        return null;
     }
-    return `home/${pokemon.id}.png`;
 }
+
+// ---------- botón "Forma" ----------
+const SWAP_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3l4 4-4 4"/><path d="M3 11V9a2 2 0 0 1 2-2h16"/><path d="M7 21l-4-4 4-4"/><path d="M21 13v2a2 2 0 0 1-2 2H3"/></svg>`;
+const formBusy = new Set();
+
+function injectFormUI() {
+    teamSlots.forEach((slot, index) => {
+        // contenedor vertical arriba a la izquierda: "Ascender" arriba, "Forma" debajo
+        const actions = document.createElement('div');
+        actions.className = 'slot-actions';
+
+        const ascend = slot.querySelector('.slot-ascend');
+        if (ascend) actions.appendChild(ascend); // mover el nodo conserva su listener
+
+        actions.insertAdjacentHTML('beforeend', `
+            <button type="button" class="slot-form" aria-label="Cambiar forma">
+                ${SWAP_SVG}<span>Forma</span><span class="slot-form-cur"></span>
+            </button>`);
+        slot.appendChild(actions);
+
+        actions.querySelector('.slot-form').addEventListener('click', (e) => {
+            e.stopPropagation(); // si no, el click llegaría al hueco y quitaría el Pokémon
+            cycleForm(index);
+        });
+    });
+}
+injectFormUI();
+
+async function cycleForm(index) {
+    const entry = pokemonTeam[index];
+    if (!entry || !entry.id || !Array.isArray(entry.forms) || entry.forms.length < 2) return;
+    if (formBusy.has(index)) return;
+    formBusy.add(index);
+
+    const btn = teamSlots[index].querySelector('.slot-form');
+    btn.classList.add('busy');
+
+    try {
+        const nextIndex = ((entry.formIndex || 0) + 1) % entry.forms.length;
+        const form = entry.forms[nextIndex];
+        const pokemon = { id: entry.id, name: entry.forms[0].speciesName };
+
+        // 1) carta de esa forma
+        let image = await findCardUrl(pokemon, entry.nickname, form.keyword ? form : null);
+        let fallback = false;
+
+        // 2) si no hay ninguna, imagen del Pokémon normal
+        if (!image) {
+            image = await getRandomCardImage(pokemon, entry.nickname);
+            fallback = !!form.keyword;
+        }
+
+        if (pokemonTeam[index] !== entry) return; // lo quitaron o reiniciaron mientras cargaba
+
+        entry.formIndex = nextIndex;
+        entry.types = form.types;
+        entry.image = image;
+        setTeamSlot(index, image, entry.nickname); // refresca carta, botón y tabla de tipos
+        saveToLocalStorage();
+
+        if (fallback) showToast(`Sin carta de ${form.label} en TCGdex: se muestra la normal`);
+    } finally {
+        formBusy.delete(index);
+        btn.classList.remove('busy');
+    }
+}
+
+function applyFormState() {
+    teamSlots.forEach((slot, i) => {
+        const p = pokemonTeam[i];
+        const forms = p && Array.isArray(p.forms) ? p.forms : [];
+        const hasForms = slot.classList.contains('filled') && forms.length > 1;
+
+        slot.classList.toggle('has-forms', hasForms);
+
+        const cur = slot.querySelector('.slot-form-cur');
+        if (cur) cur.textContent = hasForms ? (forms[p.formIndex || 0] || forms[0]).label : '';
+    });
+}
+
+
+
 updateTeamCount();
 
 
