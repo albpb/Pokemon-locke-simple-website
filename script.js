@@ -519,6 +519,8 @@ function validFormat(d) {
 }
 
 
+
+
 // ---------- modal de mote ----------
 const nicknameOverlay = document.getElementById('nickname-overlay');
 const nicknamePreviewImg = document.getElementById('nickname-preview-img');
@@ -1038,13 +1040,21 @@ function classifyVariety(speciesName, varietyName) {
     const extra = rest ? ` · ${rest.replace('-breed', '').replace(/-/g, ' ')}` : '';
     return { label: base.label + extra, keyword: base.keyword };
 }
+const formsCache = new Map(); // id de especie -> Promise de formas
 
-const formsCache = new Map(); // id de especie -> formas
+function getPokemonForms(id) {
+    if (!formsCache.has(id)) {
+        const promise = fetchPokemonForms(id).catch(error => {
+            formsCache.delete(id); // si falla, se podrá reintentar
+            throw error;
+        });
+        formsCache.set(id, promise);
+    }
+    return formsCache.get(id);
+}
 
 // [{ name, label, keyword, types, speciesName }, ...]  — la posición 0 siempre es la forma normal
-async function getPokemonForms(id) {
-    if (formsCache.has(id)) return formsCache.get(id);
-
+async function fetchPokemonForms(id) {
     const res = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${id}`);
     if (!res.ok) throw new Error(`PokeAPI HTTP ${res.status}`);
     const species = await res.json();
@@ -1071,9 +1081,7 @@ async function getPokemonForms(id) {
 
     if (!resolved[0]) throw new Error('No se pudo obtener la forma normal');
 
-    const forms = resolved.filter(Boolean);
-    formsCache.set(id, forms);
-    return forms;
+    return resolved.filter(Boolean);
 }
 
 function hasWord(normalized, word) {
@@ -1084,14 +1092,20 @@ function hasWord(normalized, word) {
 async function getCardsForForm(pokemon, form) {
     const cards = await getPokemonCards(pokemon);
 
-    // forma con palabra clave (Galarian, Heat...): solo cartas que la contengan
     if (form && form.keyword) {
         return cards.filter(c => hasWord(normalizeName(c.name), form.keyword));
     }
 
-    // forma normal: fuera las cartas regionales / de Rotom con electrodoméstico
-    if (TCG_ALLOW_REGIONAL_NAME.has(pokemon.name)) return cards;
-    const banned = [...REGIONAL_KEYWORDS, ...(pokemon.name === 'rotom' ? ROTOM_KEYWORDS : [])];
+    let banned = [];
+    try {
+        const forms = await getPokemonForms(pokemon.id);
+        banned = forms.filter(f => f.keyword).map(f => f.keyword);
+    } catch (error) {
+        console.error('Formas:', error);
+    }
+
+    if (banned.length === 0) return cards; // Obstagoon, Sirfetch'd, Overqwil...
+
     return cards.filter(c => {
         const n = normalizeName(c.name);
         return !banned.some(w => hasWord(n, w));
