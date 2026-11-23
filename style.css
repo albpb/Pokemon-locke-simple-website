@@ -2147,3 +2147,88 @@
 @media (hover: none){
   .slot-form{ opacity: 1; transform: none; }
 }
+
+/* ---------- imagen propia ---------- */
+:root{ --custom-fit: cover; }  
+
+.slot-filled-content.is-custom{ background: var(--bg); }
+.slot-filled-content.is-custom .slot-img,
+.team-slot.filled:hover .slot-filled-content.is-custom .slot-img{
+  position: static;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  object-fit: var(--custom-fit);
+  padding: 0;
+  transform: none;
+}
+
+.god-entry-art.is-custom{ background: var(--bg); }
+.god-entry-art.is-custom img{
+  position: static;
+  width: 100%;
+  height: 100%;
+  object-fit: var(--custom-fit);
+  padding: 0;
+  transform: none;
+}
+
+.slot-photo,
+.slot-photo-reset{
+  position: relative;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 11px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity .25s var(--ease), transform .25s var(--ease), box-shadow .25s var(--ease);
+}
+.slot-photo svg,
+.slot-photo-reset svg{ width: 12px; height: 12px; flex-shrink: 0; }
+
+.slot-photo{
+  color: #032b2e;
+  background: linear-gradient(135deg, #aef3ee, #4fd8d0 50%, #1fb3ad);
+  border: 1px solid rgba(255,255,255,.55);
+  box-shadow: 0 6px 18px -6px rgba(45,212,200,.85);
+}
+.slot-photo-reset{
+  color: var(--text);
+  background: rgba(20,22,42,.82);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--border);
+}
+
+.team-slot.filled .slot-photo{ display: inline-flex; }
+.team-slot.filled.has-custom .slot-photo-reset{ display: inline-flex; }
+
+.team-slot.filled:hover .slot-photo,
+.team-slot.filled:hover .slot-photo-reset,
+.slot-photo:focus-visible,
+.slot-photo-reset:focus-visible{
+  opacity: 1;
+  transform: translateY(0);
+}
+.team-slot.filled .slot-photo:hover{
+  transform: translateY(0) scale(1.06);
+  box-shadow: 0 8px 22px -4px rgba(45,212,200,1);
+}
+.team-slot.filled .slot-photo-reset:hover{
+  transform: translateY(0) scale(1.06);
+  border-color: var(--accent);
+}
+.slot-photo:focus-visible,
+.slot-photo-reset:focus-visible{ outline: 2px solid #fff; outline-offset: 2px; }
+
+@media (hover: none){
+  .slot-photo, .slot-photo-reset{ opacity: 1; transform: none; }
+}

@@ -15,6 +15,8 @@ function pokeballSVG() {
 const STORAGE_KEY = 'hardlocke-helper-save';
 let persistEnabled = false; // evita que el render inicial pise la partida guardada
 
+let storageWarned = false;
+
 function saveToLocalStorage() {
     if (!persistEnabled) return;
     try {
@@ -27,8 +29,13 @@ function saveToLocalStorage() {
             godHistory,
             savedAt: new Date().toISOString()
         }));
+        storageWarned = false;
     } catch (error) {
         console.error('No se pudo guardar en localStorage:', error);
+        if (!storageWarned) {
+            storageWarned = true;
+            showToast('Almacenamiento lleno: usa «Guardar» para no perder la partida');
+        }
     }
 }
 
@@ -451,7 +458,7 @@ async function loadTeamSlot(index) {
 
     entry.image = image;
     entry.types = types;
-    setTeamSlot(index, image, entry.nickname);
+    setTeamSlot(index, displayImage(entry), entry.nickname);
     saveToLocalStorage();
 
     // partidas antiguas: aún no sabemos si tiene formas
@@ -512,7 +519,8 @@ function validFormat(d) {
             (p.types === undefined || Array.isArray(p.types)) &&
             (p.isGod === undefined || typeof p.isGod === 'boolean') &&
             (p.forms === undefined || Array.isArray(p.forms)) &&
-            (p.formIndex === undefined || Number.isInteger(p.formIndex))
+            (p.formIndex === undefined || Number.isInteger(p.formIndex)) &&
+            (p.customImage === undefined || (typeof p.customImage === 'string' && p.customImage.startsWith('data:image/')))
         )
 
     );
@@ -616,8 +624,10 @@ function setTeamSlot(index, imgSrc, name) {
     const img = slot.querySelector('.slot-img');
     const nameEl = slot.querySelector('.slot-name');
 
+    const isCustom = imgSrc.startsWith('data:');
     const isCard = imgSrc.includes('assets.tcgdex.net');
-    filledContent.classList.toggle('is-sprite', !isCard);
+    filledContent.classList.toggle('is-custom', isCustom);
+    filledContent.classList.toggle('is-sprite', !isCard && !isCustom);
 
     img.src = imgSrc;
     img.alt = name || '';
@@ -653,6 +663,7 @@ function updateTeamCount() {
     teamCompleteChip.classList.toggle('show', filled === total);
     applyGodState();
     applyFormState();
+    applyPhotoState();
     updateTypePanel();
 }
 
@@ -750,7 +761,7 @@ function openGodModal(index) {
     if (pokemonTeam.some(p => p && p.isGod)) return; // ya hay un dios
 
     pendingGodIndex = index;
-    godCardImg.src = entry.image || `home/${entry.id}.png`;
+    godCardImg.src = displayImage(entry);
     godCardImg.alt = pokemonDisplayName(entry);
     godNameEl.textContent = `“${pokemonDisplayName(entry)}”`;
 
@@ -808,7 +819,7 @@ function registerGod(entry) {
         id: entry.id,
         nickname: entry.nickname || '',
         species: species ? species.name : '',
-        image: entry.image || '',
+        image: displayImage(entry),
         ascendedAt: new Date().toISOString()
     });
     renderRegistry();
@@ -836,6 +847,7 @@ function renderRegistry() {
     registryGrid.innerHTML = godHistory.map((g, i) => {
         const src = g.image || `home/${g.id}.png`;
         const isCard = src.includes('assets.tcgdex.net');
+        const isCustom = src.startsWith('data:');
         const species = g.species ? g.species[0].toUpperCase() + g.species.slice(1) : `#${g.id}`;
         const title = g.nickname || species;
         const isCurrent = currentGod && currentGod.id === g.id && currentGod.nickname === g.nickname;
@@ -843,7 +855,7 @@ function renderRegistry() {
 
         return `
             <article class="god-entry" style="--i:${i}">
-                <div class="god-entry-art${isCard ? '' : ' is-sprite'}">
+                <div class="god-entry-art${isCustom ? ' is-custom' : isCard ? '' : ' is-sprite'}">
                     <img src="${escapeHTML(src)}" alt="${escapeHTML(title)}">
                     <span class="god-entry-rank">${CROWN_SVG}${i + 1}</span>
                     ${isCurrent ? '<span class="god-entry-current">Actual</span>' : ''}
@@ -1187,10 +1199,10 @@ async function cycleForm(index) {
         entry.formIndex = nextIndex;
         entry.types = form.types;
         entry.image = image;
-        setTeamSlot(index, image, entry.nickname); // refresca carta, botón y tabla de tipos
+        setTeamSlot(index, displayImage(entry), entry.nickname); // refresca carta, botón y tabla de tipos
         saveToLocalStorage();
 
-        if (fallback) showToast(`Sin carta de ${form.label} en TCGdex: se muestra la normal`);
+        if (fallback && !entry.customImage) showToast(`Sin carta de ${form.label} en TCGdex: se muestra la normal`);
     } finally {
         formBusy.delete(index);
         btn.classList.remove('busy');
@@ -1210,6 +1222,127 @@ function applyFormState() {
     });
 }
 
+// ---------- imagen propia ----------
+const IMAGE_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/></svg>`;
+const UNDO_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg>`;
+
+// la imagen que realmente se muestra: la tuya si existe, si no la carta, si no el sprite
+function displayImage(entry) {
+    if (!entry || !entry.id) return '';
+    return entry.customImage || entry.image || `home/${entry.id}.png`;
+}
+
+// reduce la imagen (máx. 800 px) para que quepa en localStorage
+function fileToDataURL(file, maxSize = 800, quality = 0.85) {
+    return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            const nw = img.naturalWidth || 512;
+            const nh = img.naturalHeight || 512;
+            const scale = Math.min(1, maxSize / Math.max(nw, nh));
+
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(nw * scale));
+            canvas.height = Math.max(1, Math.round(nh * scale));
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            // webp conserva la transparencia; los jpeg se quedan en jpeg
+            const type = file.type === 'image/jpeg' ? 'image/jpeg' : 'image/webp';
+            resolve(canvas.toDataURL(type, quality));
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error('No se pudo leer la imagen'));
+        };
+        img.src = url;
+    });
+}
+
+// selector de ficheros único, compartido por todos los huecos
+const photoInput = document.createElement('input');
+photoInput.type = 'file';
+photoInput.accept = 'image/*';
+document.body.appendChild(photoInput);
+let photoTargetIndex = null;
+
+function injectPhotoUI() {
+    teamSlots.forEach((slot, index) => {
+        const actions = slot.querySelector('.slot-actions');
+        if (!actions) return;
+
+        actions.insertAdjacentHTML('beforeend', `
+            <button type="button" class="slot-photo" aria-label="Usar una imagen propia">${IMAGE_SVG}<span>Imagen</span></button>
+            <button type="button" class="slot-photo-reset" aria-label="Volver a la carta">${UNDO_SVG}<span>Carta</span></button>
+        `);
+
+        actions.querySelector('.slot-photo').addEventListener('click', (e) => {
+            e.stopPropagation(); // si no, el click llegaría al hueco y quitaría el Pokémon
+            photoTargetIndex = index;
+            photoInput.click();
+        });
+        actions.querySelector('.slot-photo-reset').addEventListener('click', (e) => {
+            e.stopPropagation();
+            resetCustomImage(index);
+        });
+    });
+}
+injectPhotoUI();
+
+photoInput.addEventListener('change', async () => {
+    const file = photoInput.files[0];
+    const index = photoTargetIndex;
+    photoInput.value = '';       // permite elegir el mismo fichero otra vez
+    photoTargetIndex = null;
+    if (!file || index === null) return;
+
+    if (!file.type.startsWith('image/')) {
+        showToast('Ese fichero no es una imagen');
+        return;
+    }
+
+    const entry = pokemonTeam[index];
+    if (!entry || !entry.id) return;
+
+    try {
+        const dataUrl = await fileToDataURL(file);
+        if (pokemonTeam[index] !== entry) return; // lo quitaron mientras se procesaba
+
+        entry.customImage = dataUrl;
+        setTeamSlot(index, dataUrl, entry.nickname);
+        saveToLocalStorage();
+        showToast('Imagen aplicada');
+    } catch (error) {
+        console.error('Imagen propia:', error);
+        showToast('No se pudo cargar la imagen');
+    }
+});
+
+// vuelve a la carta de TCGdex
+async function resetCustomImage(index) {
+    const entry = pokemonTeam[index];
+    if (!entry || !entry.customImage) return;
+    delete entry.customImage;
+
+    if (!entry.image) {
+        const species = POKEMON_LIST[entry.id - 1] || { id: entry.id };
+        entry.image = await getRandomCardImage(species, entry.nickname);
+        if (pokemonTeam[index] !== entry) return;
+    }
+
+    setTeamSlot(index, displayImage(entry), entry.nickname);
+    saveToLocalStorage();
+}
+
+// muestra "Carta" solo en los huecos que usan imagen propia
+function applyPhotoState() {
+    teamSlots.forEach((slot, i) => {
+        const p = pokemonTeam[i];
+        slot.classList.toggle('has-custom', slot.classList.contains('filled') && !!(p && p.customImage));
+    });
+}
 
 
 updateTeamCount();
